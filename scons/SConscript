@@ -1,0 +1,24 @@
+import os
+
+Import('env')
+
+_INCLUDES = [Dir('../src').abspath]
+
+_SOURCES = ['Capture1394.cpp']
+_SOURCES = [File('../src/' + s).abspath for s in _SOURCES]
+
+_LIBS = ['libdc1394.a', 'libusb-1.0.a']
+if env['PLATFORM'] == 'darwin':
+ 	_LIBS = [Dir('../lib/macosx/').abspath + '/' + s for s in _LIBS]
+	env.Append(FRAMEWORKS = Split('CoreFoundation CoreServices IOKit'))
+else:
+	_LIBS = []
+
+_LIBS = [File(s) for s in _LIBS]
+
+env.Append(APP_SOURCES = _SOURCES)
+env.Append(CPPPATH = _INCLUDES)
+env.Append(LIBS = _LIBS)
+
+Return('env')
+
