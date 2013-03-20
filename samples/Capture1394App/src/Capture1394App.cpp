@@ -18,6 +18,7 @@
 #include "cinder/Cinder.h"
 #include "cinder/app/AppBasic.h"
 #include "cinder/gl/gl.h"
+#include "cinder/gl/Texture.h"
 #include "cinder/params/Params.h"
 
 #include "Capture1394.h"
@@ -32,6 +33,7 @@ class Capture1394App : public AppBasic
 	public:
 		void prepareSettings( Settings *settings );
 		void setup();
+		void shutdown();
 
 		void keyDown( KeyEvent event );
 
@@ -43,6 +45,9 @@ class Capture1394App : public AppBasic
 
 		float mFps;
 		bool mVerticalSyncEnabled = false;
+
+		Capture1394Ref mCapture1394;
+		gl::Texture mTexture;
 };
 
 void Capture1394App::prepareSettings( Settings *settings )
@@ -61,6 +66,11 @@ void Capture1394App::setup()
 	const vector< Capture1394::VideoMode > &vmodes = dref->getSupportedVideoModes();
 	for ( auto &mode : vmodes )
 		console() << mode << endl;
+	Capture1394::Options options;
+	//options.setVideoMode( vmodes[ 8 ] );
+	//options.setVideoMode( vmodes[ 0 ] );
+	mCapture1394 = Capture1394::create( options );
+	mCapture1394->start();
 }
 
 void Capture1394App::update()
@@ -69,13 +79,32 @@ void Capture1394App::update()
 
 	if ( mVerticalSyncEnabled != gl::isVerticalSyncEnabled() )
 		gl::enableVerticalSync( mVerticalSyncEnabled );
+
+	Surface8u captureSurface;
+	if ( mCapture1394->getSurface( &captureSurface ) )
+	{
+		mTexture = gl::Texture( captureSurface );
+	}
 }
 
 void Capture1394App::draw()
 {
-	gl::clear( Color::black() );
+	gl::clear();
+
+	gl::setViewport( getWindowBounds() );
+	gl::setMatricesWindow( getWindowSize() );
+
+	if ( mTexture )
+	{
+		gl::draw( mTexture, getWindowBounds() );
+	}
 
 	params::InterfaceGl::draw();
+}
+
+void Capture1394App::shutdown()
+{
+	mCapture1394->stop();
 }
 
 void Capture1394App::keyDown( KeyEvent event )

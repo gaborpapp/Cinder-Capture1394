@@ -4,7 +4,7 @@ Import('env')
 
 _INCLUDES = [Dir('../src').abspath]
 
-_SOURCES = ['Capture1394.cpp']
+_SOURCES = ['Capture1394.cpp', 'SurfaceCache.cpp']
 _SOURCES = [File('../src/' + s).abspath for s in _SOURCES]
 
 _LIBS = ['libdc1394.a', 'libusb-1.0.a']

@@ -1,5 +1,9 @@
 #include "Cinder/app/App.h"
 
+#include <dc1394/capture.h>
+
+#include "SurfaceCache.h"
+
 #include "Capture1394.h"
 
 using namespace std;
@@ -9,6 +13,8 @@ namespace mndl {
 class ContextManager
 {
 	public:
+		~ContextManager();
+
 		static std::shared_ptr< ContextManager > instance();
 		static dc1394_t * getContext();
 
@@ -19,6 +25,12 @@ class ContextManager
 
 dc1394_t * ContextManager::sContext;
 shared_ptr< ContextManager > ContextManager::sInstance;
+
+ContextManager::~ContextManager()
+{
+	if ( sContext )
+		dc1394_free( sContext );
+}
 
 shared_ptr< ContextManager > ContextManager::instance()
 {
@@ -76,10 +88,9 @@ const vector< Capture1394::DeviceRef > & Capture1394::getDevices( bool forceRefr
 				checkError( dc1394_video_get_supported_framerates( camera, videoMode, &framerates ) );
 				for ( int j = framerates.num - 1; j >= 0; j-- )
 				{
-					float framerate;
-					dc1394_framerate_as_float( framerates.framerates[ j ], &framerate );
 					device->mSupportedVideoModes.push_back(
-						Capture1394::VideoMode( ci::Vec2i( width, height ), videoMode, coding, framerate ) );
+						Capture1394::VideoMode( ci::Vec2i( width, height ), videoMode, coding,
+							framerates.framerates[ j ] ) );
 				}
 			}
 			else
@@ -152,6 +163,112 @@ Capture1394::Device::~Device()
 	dc1394_video_set_transmission( mCamera, DC1394_OFF );
 	dc1394_capture_stop( mCamera );
 	dc1394_camera_free( mCamera );
+}
+
+Capture1394::Capture1394( const Options &options, const DeviceRef device ) :
+	mObj( shared_ptr< Obj >( new Obj( options, device ) ) )
+{}
+
+Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef device ) :
+	mOptions( options ), mDevice( device )
+{
+	if ( !device )
+	{
+		mDevice = Capture1394::getDevices()[ 0 ];
+	}
+	dc1394camera_t *camera = mDevice->getNative();
+
+	if ( mOptions.getVideoMode().getAutoVideoMode() )
+	{
+		Capture1394::VideoMode videoMode = mDevice->getSupportedVideoModes()[ 0 ];
+		mOptions.setVideoMode( videoMode );
+	}
+
+	mWidth = mOptions.getVideoMode().getResolution().x;
+	mHeight = mOptions.getVideoMode().getResolution().y;
+	mSurfaceCache = std::shared_ptr< SurfaceCache >( new SurfaceCache( mWidth, mHeight, ci::SurfaceChannelOrder::RGB, 4 ) );
+
+	Capture1394::checkError( dc1394_video_set_operation_mode( camera, DC1394_OPERATION_MODE_1394B ) );
+
+	dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
+	Capture1394::checkError( dc1394_video_set_iso_speed( camera, DC1394_ISO_SPEED_400 ) );
+	Capture1394::checkError( dc1394_video_set_mode( camera, videoMode ) );
+	if ( ( videoMode < DC1394_VIDEO_MODE_FORMAT7_MIN ) || ( DC1394_VIDEO_MODE_FORMAT7_MAX < videoMode ) )
+		Capture1394::checkError( dc1394_video_set_framerate( camera, mOptions.getVideoMode().getFrameRate() ) );
+	Capture1394::checkError( dc1394_capture_setup( camera, 32, DC1394_CAPTURE_FLAGS_DEFAULT ) );
+}
+
+Capture1394::Obj::~Obj()
+{
+	dc1394camera_t *camera = mDevice->getNative();
+	Capture1394::checkError( dc1394_video_set_transmission( camera, DC1394_OFF ) );
+	Capture1394::checkError( dc1394_capture_stop( camera ) );
+}
+
+void Capture1394::Obj::start()
+{
+	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_ON ) );
+}
+
+void Capture1394::Obj::stop()
+{
+	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_OFF ) );
+}
+
+bool Capture1394::Obj::getSurface( ci::Surface8u *surface )
+{
+	dc1394camera_t *camera = mDevice->getNative();
+	dc1394video_frame_t *frame = NULL;
+	Capture1394::checkError( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_POLL, &frame ) );
+
+	if ( !frame )
+	{
+		// no new frame
+		return false;
+	}
+	else
+	if ( dc1394_capture_is_frame_corrupt( camera, frame ) )
+	{
+		// frame is corrupt
+		Capture1394::checkError( dc1394_capture_enqueue( camera, frame ) );
+		ci::app::console() << "corrupt frame! " << ci::app::getElapsedFrames() << endl;
+		return false;
+	}
+	else
+	{
+		*surface = mSurfaceCache->getNewSurface();
+		dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
+		if ( ( DC1394_VIDEO_MODE_FORMAT7_MIN <= videoMode ) &&
+			 ( videoMode <= DC1394_VIDEO_MODE_FORMAT7_MAX ) )
+		{
+			Capture1394::checkError( dc1394_bayer_decoding_8bit(
+						frame->image, surface->getData(), mWidth, mHeight,
+						DC1394_COLOR_FILTER_RGGB, DC1394_BAYER_METHOD_BILINEAR ) );
+		}
+		else
+		{
+			dc1394color_coding_t colorCoding = mOptions.getVideoMode().getColorCoding();
+			uint32_t bits; // TODO: is this calculation correct?
+			switch ( colorCoding )
+			{
+				case DC1394_COLOR_CODING_RGB16:
+				case DC1394_COLOR_CODING_MONO16:
+				case DC1394_COLOR_CODING_RAW16:
+					bits = 16;
+					break;
+
+				default:
+					bits = 8;
+					break;
+			}
+			Capture1394::checkError( dc1394_convert_to_RGB8(
+						frame->image, surface->getData(), mWidth, mHeight,
+						0, colorCoding, bits ) );
+		}
+		Capture1394::checkError( dc1394_capture_enqueue( camera, frame ) );
+	}
+
+	return true;
 }
 
 }; // namespace mndl

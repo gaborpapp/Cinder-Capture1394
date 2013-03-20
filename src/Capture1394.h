@@ -8,7 +8,6 @@
 #include "cinder/Surface.h"
 
 #include <dc1394/dc1394.h>
-#include <dc1394/capture.h>
 
 namespace mndl {
 
@@ -29,7 +28,7 @@ class Capture1394
 				VideoMode() : mAutoVideoMode( true ) {}
 
 				VideoMode( const ci::Vec2i &res, dc1394video_mode_t videoMode,
-						   dc1394color_coding_t coding, float frameRate = 0.f ) :
+						   dc1394color_coding_t coding, dc1394framerate_t frameRate = (dc1394framerate_t)0 ) :
 					mResolution( res ), mVideoMode( videoMode ), mColorCoding( coding ),
 					mFrameRate( frameRate ), mAutoVideoMode( false ) {}
 
@@ -62,11 +61,11 @@ class Capture1394
 				void setColorCoding( dc1394color_coding_t coding ) { mColorCoding = coding; }
 				dc1394color_coding_t getColorCoding() const { return mColorCoding; }
 
-				VideoMode & frameRate( float frameRate ) { mFrameRate = frameRate; return *this; }
-				void setFrameRate( float frameRate ) { mFrameRate = frameRate; }
-				float getFrameRate() const { return mFrameRate; }
+				VideoMode & frameRate( dc1394framerate_t frameRate ) { mFrameRate = frameRate; return *this; }
+				void setFrameRate( dc1394framerate_t frameRate ) { mFrameRate = frameRate; }
+				dc1394framerate_t getFrameRate() const { return mFrameRate; }
 
-				VideoMode & autoVideoMode( bool autoMode ) { mAutoVideoMode = autoMode; return *this; }
+				VideoMode & autoVideoMode( bool autoMode ) { mAutoVideoMode = autoMode; return *this; };
 				void setAutoVideoMode( bool autoMode ) { mAutoVideoMode = autoMode; }
 				bool getAutoVideoMode() const { return mAutoVideoMode; }
 
@@ -74,7 +73,7 @@ class Capture1394
 				ci::Vec2i mResolution;
 				dc1394video_mode_t mVideoMode;
 				dc1394color_coding_t mColorCoding;
-				float mFrameRate;
+				dc1394framerate_t mFrameRate;
 				bool mAutoVideoMode;
 
 			public:
@@ -95,17 +94,18 @@ class Capture1394
 							"MONO8", "YUV411", "YUV422", "YUV444",
 							"RGB8", "MONO16", "RGB16", "MONO16S",
 							"RGB16S", "RAW8", "RAW16" };
+					const float framerates[ DC1394_FRAMERATE_NUM ] = {
+						1.85f, 3.75f, 7.5f, 15.f, 30.f, 60.f, 120.f, 240.f };
 
-					if ( rhs.mFrameRate == 0.f )
+					if ( rhs.mFrameRate == 0 )
 						lhs << "[" << rhs.mResolution.x << "x" << rhs.mResolution.y << " " <<
 							modes[ rhs.mVideoMode - DC1394_VIDEO_MODE_MIN ] << " " <<
 							codings[ rhs.mColorCoding - DC1394_COLOR_CODING_MIN ] << "]";
 					else
 						lhs << "[" << rhs.mResolution.x << "x" << rhs.mResolution.y <<
-							"@" << rhs.mFrameRate << " " <<
+							"@" << framerates[ rhs.mFrameRate - DC1394_FRAMERATE_MIN ] << " " <<
 							modes[ rhs.mVideoMode - DC1394_VIDEO_MODE_MIN ] << " " <<
 							codings[ rhs.mColorCoding - DC1394_COLOR_CODING_MIN ] << "]";
-
 					return lhs;
 				}
 		};
@@ -117,20 +117,27 @@ class Capture1394
 				Options() {}
 
 				void setVideoMode( const VideoMode &videoMode ) { mVideoMode = videoMode; }
+				const VideoMode & getVideoMode() const { return mVideoMode; }
 
 			private:
 				VideoMode mVideoMode;
 		};
 
 
-		/*
-		static CaptureRef create( const Options &options, const DeviceRef device = DeviceRef() ) { return CaptureRef( new Capture( width, height, device ) ); }
-		*/
+		static Capture1394Ref create( const Options &options = Options(), const DeviceRef device = DeviceRef() ) { return Capture1394Ref( new Capture1394( options, device ) ); }
 
 		Capture1394() {}
 		//! \deprecated Call Capture1394::create() instead
 		Capture1394( const Options &options = Options(), const DeviceRef device = DeviceRef() );
 		~Capture1394() {}
+
+		//! Begin capturing video.
+		void start() { mObj->start(); }
+		//! Stop capturing video.
+		void stop() { mObj->stop(); }
+
+		//! Returns whether there is a proper video frame available and provides it in \a surface.
+		bool getSurface( ci::Surface8u *surface ) { return mObj->getSurface( surface ); };
 
 		//! Returns a vector of all Devices connected to the system. If \a forceRefresh then the system will be polled for connected devices.
 		static const std::vector< DeviceRef > & getDevices( bool forceRefresh = false );
@@ -175,23 +182,33 @@ class Capture1394
 		static bool sDevicesEnumerated;
 		static std::vector< Capture1394::DeviceRef > sDevices;
 
-#if 0
-		struct Obj {
-			Obj( int32_t width, int32_t height, const Capture1394::DeviceRef device );
-			virtual ~Obj();
+		struct Obj
+		{
+			Obj( const Options &options, const Capture1394::DeviceRef device );
+			~Obj();
 
+			void start();
+			void stop();
+
+			bool getSurface( ci::Surface8u *surface );
+
+			Options mOptions;
+			DeviceRef mDevice;
+			int mWidth, mHeight;
+
+			std::shared_ptr< class SurfaceCache > mSurfaceCache;
+			ci::Surface8u mCurrentFrame;
 		};
 
-		std::shared_ptr<Obj> mObj;
+		std::shared_ptr< Obj > mObj;
 
 	public:
 		//@{
 		//! Emulates shared_ptr-like behavior
-		typedef std::shared_ptr<Obj> Capture::*unspecified_bool_type;
-		operator unspecified_bool_type() const { return ( mObj.get() == 0 ) ? 0 : &Capture::mObj; }
+		typedef std::shared_ptr<Obj> Capture1394::*unspecified_bool_type;
+		operator unspecified_bool_type() const { return ( mObj.get() == 0 ) ? 0 : &Capture1394::mObj; }
 		void reset() { mObj.reset(); }
 		//@}
-#endif
 };
 
 class CaptureExc : public ci::Exception {};
