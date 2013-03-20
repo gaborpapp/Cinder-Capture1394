@@ -1,9 +1,10 @@
+#include <cstring>
+
 #include "Cinder/app/App.h"
 
 #include <dc1394/capture.h>
 
 #include "SurfaceCache.h"
-
 #include "Capture1394.h"
 
 using namespace std;
@@ -45,7 +46,7 @@ dc1394_t * ContextManager::getContext()
 	{
 		sContext = dc1394_new();
 		if ( sContext == NULL )
-			throw CaptureExcInitFail();
+			throw Capture1394Exc( "Cannot initialize Dc1394." );
 	}
 	return sContext;
 }
@@ -68,8 +69,6 @@ const vector< Capture1394::DeviceRef > & Capture1394::getDevices( bool forceRefr
 	{
 		Capture1394::DeviceRef device = Capture1394::DeviceRef( new Capture1394::Device( cameraList->ids[ i ].guid ) );
 		dc1394camera_t *camera = device->getNative();
-
-		checkError( dc1394_video_set_operation_mode( camera, DC1394_OPERATION_MODE_1394B ) );
 
 		dc1394video_modes_t videoModes;
 		checkError( dc1394_video_get_supported_modes( camera, &videoModes) );
@@ -147,9 +146,8 @@ Capture1394::DeviceRef Capture1394::findDeviceByNameContains( const string &name
 
 void Capture1394::checkError( dc1394error_t err )
 {
-	// TODO
 	if ( err )
-		throw CaptureExcInitFail();
+		throw Capture1394Exc( err );
 }
 
 Capture1394::Device::Device( uint64_t guid )
@@ -188,14 +186,14 @@ Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef devi
 	mHeight = mOptions.getVideoMode().getResolution().y;
 	mSurfaceCache = std::shared_ptr< SurfaceCache >( new SurfaceCache( mWidth, mHeight, ci::SurfaceChannelOrder::RGB, 4 ) );
 
-	Capture1394::checkError( dc1394_video_set_operation_mode( camera, DC1394_OPERATION_MODE_1394B ) );
+	Capture1394::checkError( dc1394_video_set_operation_mode( camera, mOptions.getOperationMode() ) );
 
 	dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
 	Capture1394::checkError( dc1394_video_set_iso_speed( camera, DC1394_ISO_SPEED_400 ) );
 	Capture1394::checkError( dc1394_video_set_mode( camera, videoMode ) );
 	if ( ( videoMode < DC1394_VIDEO_MODE_FORMAT7_MIN ) || ( DC1394_VIDEO_MODE_FORMAT7_MAX < videoMode ) )
 		Capture1394::checkError( dc1394_video_set_framerate( camera, mOptions.getVideoMode().getFrameRate() ) );
-	Capture1394::checkError( dc1394_capture_setup( camera, 32, DC1394_CAPTURE_FLAGS_DEFAULT ) );
+	Capture1394::checkError( dc1394_capture_setup( camera, 16, DC1394_CAPTURE_FLAGS_DEFAULT ) );
 }
 
 Capture1394::Obj::~Obj()
@@ -263,12 +261,22 @@ bool Capture1394::Obj::getSurface( ci::Surface8u *surface )
 			}
 			Capture1394::checkError( dc1394_convert_to_RGB8(
 						frame->image, surface->getData(), mWidth, mHeight,
-						0, colorCoding, bits ) );
+						frame->yuv_byte_order, colorCoding, bits ) );
 		}
 		Capture1394::checkError( dc1394_capture_enqueue( camera, frame ) );
 	}
 
 	return true;
+}
+
+Capture1394Exc::Capture1394Exc( dc1394error_t err ) throw()
+{
+	strncpy( mMessage, dc1394_error_get_string( err ), 128 );
+}
+
+Capture1394Exc::Capture1394Exc( const string &log ) throw()
+{
+	strncpy( mMessage, log.c_str(), 128 );
 }
 
 }; // namespace mndl

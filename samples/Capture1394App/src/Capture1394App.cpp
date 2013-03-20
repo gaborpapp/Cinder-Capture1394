@@ -61,16 +61,30 @@ void Capture1394App::setup()
 	mParams.addParam( "Fps", &mFps, "", true );
 	mParams.addParam( "Vertical sync", &mVerticalSyncEnabled );
 
-	Capture1394::getDevices();
-	Capture1394::DeviceRef dref = Capture1394::findDeviceByNameContains( "FMVU-03MTM" );
-	const vector< Capture1394::VideoMode > &vmodes = dref->getSupportedVideoModes();
-	for ( auto &mode : vmodes )
-		console() << mode << endl;
-	Capture1394::Options options;
-	//options.setVideoMode( vmodes[ 8 ] );
-	//options.setVideoMode( vmodes[ 0 ] );
-	mCapture1394 = Capture1394::create( options );
-	mCapture1394->start();
+	try
+	{
+		const vector < Capture1394::DeviceRef > &devices = Capture1394::getDevices();
+		if ( devices.empty() )
+		{
+			console() << "No cameras found." << endl;
+			quit();
+		}
+
+		//Capture1394::DeviceRef dref = Capture1394::findDeviceByNameContains( "FMVU-03MTM" );
+		Capture1394::DeviceRef dref = devices[ 0 ];
+		const vector< Capture1394::VideoMode > &vmodes = dref->getSupportedVideoModes();
+		for ( auto &mode : vmodes )
+			console() << mode << endl;
+		Capture1394::Options options;
+		//options.setVideoMode( vmodes[ 8 ] );
+		//options.setVideoMode( vmodes[ 0 ] );
+		mCapture1394 = Capture1394::create( options );
+		mCapture1394->start();
+	}
+	catch ( const Capture1394Exc &exc )
+	{
+		console() << exc.what() << endl;
+	}
 }
 
 void Capture1394App::update()
@@ -80,10 +94,17 @@ void Capture1394App::update()
 	if ( mVerticalSyncEnabled != gl::isVerticalSyncEnabled() )
 		gl::enableVerticalSync( mVerticalSyncEnabled );
 
-	Surface8u captureSurface;
-	if ( mCapture1394->getSurface( &captureSurface ) )
+	try
 	{
-		mTexture = gl::Texture( captureSurface );
+		Surface8u captureSurface;
+		if ( mCapture1394->getSurface( &captureSurface ) )
+		{
+			mTexture = gl::Texture( captureSurface );
+		}
+	}
+	catch ( const Capture1394Exc &exc )
+	{
+		console() << exc.what() << endl;
 	}
 }
 
@@ -104,7 +125,8 @@ void Capture1394App::draw()
 
 void Capture1394App::shutdown()
 {
-	mCapture1394->stop();
+	if ( mCapture1394 )
+		mCapture1394->stop();
 }
 
 void Capture1394App::keyDown( KeyEvent event )

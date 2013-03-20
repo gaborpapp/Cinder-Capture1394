@@ -1,10 +1,10 @@
 #pragma once
 
+#include <exception>
 #include <string>
 #include <vector>
 
 #include "cinder/Cinder.h"
-#include "cinder/Exception.h"
 #include "cinder/Surface.h"
 
 #include <dc1394/dc1394.h>
@@ -114,13 +114,23 @@ class Capture1394
 		class Options
 		{
 			public:
-				Options() {}
+				/** Default constructor with automatic video mode,
+				    DC1394_OPERATION_MODE_LEGACY operation mode.
+				*/
+				Options() : mOperationMode( DC1394_OPERATION_MODE_LEGACY ) {}
 
+				Options &videoMode( const VideoMode &videoMode ) { mVideoMode = videoMode; return *this; }
 				void setVideoMode( const VideoMode &videoMode ) { mVideoMode = videoMode; }
 				const VideoMode & getVideoMode() const { return mVideoMode; }
 
+				//! \a operationMode is one of DC1394_OPERATION_MODE_LEGACY, DC1394_OPERATION_MODE_1394B.
+				Options &operationMode( dc1394operation_mode_t operationMode ) { mOperationMode = operationMode; return *this; }
+				void setOperationMode( dc1394operation_mode_t operationMode ) { mOperationMode = operationMode; }
+				dc1394operation_mode_t getOperationMode() { return mOperationMode; }
+
 			private:
 				VideoMode mVideoMode;
+				dc1394operation_mode_t mOperationMode;
 		};
 
 
@@ -135,6 +145,17 @@ class Capture1394
 		void start() { mObj->start(); }
 		//! Stop capturing video.
 		void stop() { mObj->stop(); }
+
+		//! Returns the width of the captured image in pixels.
+		int32_t getWidth() const { return mObj->getWidth(); }
+		//! Returns the height of the captured image in pixels.
+		int32_t getHeight() const { return mObj->getHeight(); }
+		//! Returns the size of the captured image in pixels.
+		ci::Vec2i getSize() const { return ci::Vec2i( getWidth(), getHeight() ); }
+		//! Returns the aspect ratio of the capture imagee, which is its width / height
+		float getAspectRatio() const { return getWidth() / (float)getHeight(); }
+		//! Returns the bounding rectangle of the capture imagee, which is Area( 0, 0, width, height )
+		ci::Area getBounds() const { return ci::Area( 0, 0, getWidth(), getHeight() ); }
 
 		//! Returns whether there is a proper video frame available and provides it in \a surface.
 		bool getSurface( ci::Surface8u *surface ) { return mObj->getSurface( surface ); };
@@ -190,11 +211,14 @@ class Capture1394
 			void start();
 			void stop();
 
+			int32_t getWidth() const { return mWidth; };
+			int32_t getHeight() const { return mHeight; };
+
 			bool getSurface( ci::Surface8u *surface );
 
 			Options mOptions;
 			DeviceRef mDevice;
-			int mWidth, mHeight;
+			int32_t mWidth, mHeight;
 
 			std::shared_ptr< class SurfaceCache > mSurfaceCache;
 			ci::Surface8u mCurrentFrame;
@@ -211,8 +235,20 @@ class Capture1394
 		//@}
 };
 
-class CaptureExc : public ci::Exception {};
-class CaptureExcInitFail : public CaptureExc {};
+class Capture1394Exc : public std::exception
+{
+	public:
+		Capture1394Exc( dc1394error_t err ) throw();
+		Capture1394Exc( const std::string &log ) throw();
+
+		virtual const char * what() const throw()
+		{
+			return mMessage;
+		}
+
+	private:
+		char mMessage[ 129 ];
+};
 
 }; // namespace mndl
 
