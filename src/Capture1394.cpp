@@ -78,13 +78,14 @@ const vector< Capture1394::DeviceRef > & Capture1394::getDevices( bool forceRefr
 				{
 					float framerate;
 					dc1394_framerate_as_float( framerates.framerates[ j ], &framerate );
-					device->mSupportedVideoModes.push_back( Capture1394::VideoMode( ci::Vec2i( width, height ), coding, framerate ) );
+					device->mSupportedVideoModes.push_back(
+						Capture1394::VideoMode( ci::Vec2i( width, height ), videoMode, coding, framerate ) );
 				}
 			}
 			else
 			{
 				// Modes corresponding for format6 and format7 do not have framerates
-				device->mSupportedVideoModes.push_back( Capture1394::VideoMode( ci::Vec2i( width, height ), coding ) );
+				device->mSupportedVideoModes.push_back( Capture1394::VideoMode( ci::Vec2i( width, height ), videoMode, coding ) );
 			}
 		}
 
@@ -97,7 +98,9 @@ const vector< Capture1394::DeviceRef > & Capture1394::getDevices( bool forceRefr
 			if ( ! mode.present )
 				continue;
 
-			device->mSupportedVideoModes.push_back( Capture1394::VideoMode( ci::Vec2i( mode.max_size_x, mode.max_size_y ), mode.color_coding ) );
+			device->mSupportedVideoModes.push_back(
+				Capture1394::VideoMode(
+					ci::Vec2i( mode.max_size_x, mode.max_size_y ), dc1394video_mode_t( DC1394_VIDEO_MODE_FORMAT7_0 + v ), mode.color_coding ) );
 		}
 
 		sDevices.push_back( device );
