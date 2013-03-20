@@ -25,8 +25,9 @@
 using namespace ci;
 using namespace ci::app;
 using namespace std;
+using namespace mndl;
 
-class Capture1394 : public AppBasic
+class Capture1394App : public AppBasic
 {
 	public:
 		void prepareSettings( Settings *settings );
@@ -44,21 +45,25 @@ class Capture1394 : public AppBasic
 		bool mVerticalSyncEnabled = false;
 };
 
-void Capture1394::prepareSettings( Settings *settings )
+void Capture1394App::prepareSettings( Settings *settings )
 {
 	settings->setWindowSize( 800, 600 );
 }
 
-void Capture1394::setup()
+void Capture1394App::setup()
 {
 	mParams = params::InterfaceGl( "Parameters", Vec2i( 200, 300 ) );
 	mParams.addParam( "Fps", &mFps, "", true );
 	mParams.addParam( "Vertical sync", &mVerticalSyncEnabled );
 
-	mndl::Capture1394::getDevices();
+	Capture1394::getDevices();
+	Capture1394::DeviceRef dref = Capture1394::findDeviceByNameContains( "FMVU-03MTM" );
+	const vector< Capture1394::VideoMode > &vmodes = dref->getSupportedVideoModes();
+	for ( auto &mode : vmodes )
+		console() << mode << endl;
 }
 
-void Capture1394::update()
+void Capture1394App::update()
 {
 	mFps = getAverageFps();
 
@@ -66,14 +71,14 @@ void Capture1394::update()
 		gl::enableVerticalSync( mVerticalSyncEnabled );
 }
 
-void Capture1394::draw()
+void Capture1394App::draw()
 {
 	gl::clear( Color::black() );
 
 	params::InterfaceGl::draw();
 }
 
-void Capture1394::keyDown( KeyEvent event )
+void Capture1394App::keyDown( KeyEvent event )
 {
 	switch ( event.getCode() )
 	{
@@ -117,5 +122,5 @@ void Capture1394::keyDown( KeyEvent event )
 	}
 }
 
-CINDER_APP_BASIC( Capture1394, RendererGl )
+CINDER_APP_BASIC( Capture1394App, RendererGl )
 
