@@ -38,48 +38,55 @@ class Capture1394
 		static DeviceRef findDeviceByNameContains( const std::string &nameFragment );
 
 		//! Class for describing supported video modes by the device.
-		struct VideoMode
+		class VideoMode
 		{
-			VideoMode( const ci::Vec2i &res, dc1394video_mode_t videoMode,
-					   dc1394color_coding_t coding, float frameRate = 0.f ) :
-				mResolution( res ), mVideoMode( videoMode ), mCoding( coding ),
-				mFrameRate( frameRate ) {}
+			public:
+				VideoMode( const ci::Vec2i &res, dc1394video_mode_t videoMode,
+						   dc1394color_coding_t coding, float frameRate = 0.f ) :
+					mResolution( res ), mVideoMode( videoMode ), mColorCoding( coding ),
+					mFrameRate( frameRate ) {}
 
-			ci::Vec2i mResolution;
-			dc1394video_mode_t mVideoMode;
-			dc1394color_coding_t mCoding;
-			float mFrameRate;
+				const ci::Vec2i & getResolution() const { return mResolution; }
+				dc1394video_mode_t getVideoMode() const { return mVideoMode; }
+				dc1394color_coding_t getColorCoding() const { return mColorCoding; }
 
-			friend std::ostream & operator<<( std::ostream &lhs, const VideoMode &rhs )
-			{
-				const std::string modes[ DC1394_VIDEO_MODE_NUM ] = {
-						"160x120_YUV444", "320x240_YUV422", "640x480_YUV411"
-						"640x480_YUV422", "640x480_RGB8", "640x480_MONO8",
-						"640x480_MONO16", "800x600_YUV422", "800x600_RGB8",
-						"800x600_MONO8", "1024x768_YUV422", "1024x768_RGB8",
-						"1024x768_MONO8", "800x600_MONO16", "1024x768_MONO16",
-						"1280x960_YUV422", "1280x960_RGB8", "1280x960_MONO8",
-						"1600x1200_YUV422", "1600x1200_RGB8", "1600x1200_MONO8",
-						"1280x960_MONO16", "1600x1200_MONO16", "EXIF",
-						"FORMAT7_0", "FORMAT7_1", "FORMAT7_2", "FORMAT7_3",
-						"FORMAT7_4", "FORMAT7_5", "FORMAT7_6", "FORMAT7_7" };
-				const std::string codings[ DC1394_COLOR_CODING_NUM ] = {
-						"MONO8", "YUV411", "YUV422", "YUV444",
-						"RGB8", "MONO16", "RGB16", "MONO16S",
-						"RGB16S", "RAW8", "RAW16" };
+			protected:
+				ci::Vec2i mResolution;
+				dc1394video_mode_t mVideoMode;
+				dc1394color_coding_t mColorCoding;
+				float mFrameRate;
 
-				if ( rhs.mFrameRate == 0.f )
-					lhs << "[" << rhs.mResolution.x << "x" << rhs.mResolution.y << " " <<
-						modes[ rhs.mVideoMode - DC1394_VIDEO_MODE_MIN ] << " " <<
-						codings[ rhs.mCoding - DC1394_COLOR_CODING_MIN ] << "]";
-				else
-					lhs << "[" << rhs.mResolution.x << "x" << rhs.mResolution.y <<
-						"@" << rhs.mFrameRate << " " <<
-						modes[ rhs.mVideoMode - DC1394_VIDEO_MODE_MIN ] << " " <<
-						codings[ rhs.mCoding - DC1394_COLOR_CODING_MIN ] << "]";
+			public:
+				friend std::ostream & operator<<( std::ostream &lhs, const VideoMode &rhs )
+				{
+					const std::string modes[ DC1394_VIDEO_MODE_NUM ] = {
+							"160x120_YUV444", "320x240_YUV422", "640x480_YUV411"
+							"640x480_YUV422", "640x480_RGB8", "640x480_MONO8",
+							"640x480_MONO16", "800x600_YUV422", "800x600_RGB8",
+							"800x600_MONO8", "1024x768_YUV422", "1024x768_RGB8",
+							"1024x768_MONO8", "800x600_MONO16", "1024x768_MONO16",
+							"1280x960_YUV422", "1280x960_RGB8", "1280x960_MONO8",
+							"1600x1200_YUV422", "1600x1200_RGB8", "1600x1200_MONO8",
+							"1280x960_MONO16", "1600x1200_MONO16", "EXIF",
+							"FORMAT7_0", "FORMAT7_1", "FORMAT7_2", "FORMAT7_3",
+							"FORMAT7_4", "FORMAT7_5", "FORMAT7_6", "FORMAT7_7" };
+					const std::string codings[ DC1394_COLOR_CODING_NUM ] = {
+							"MONO8", "YUV411", "YUV422", "YUV444",
+							"RGB8", "MONO16", "RGB16", "MONO16S",
+							"RGB16S", "RAW8", "RAW16" };
 
-				return lhs;
-			}
+					if ( rhs.mFrameRate == 0.f )
+						lhs << "[" << rhs.mResolution.x << "x" << rhs.mResolution.y << " " <<
+							modes[ rhs.mVideoMode - DC1394_VIDEO_MODE_MIN ] << " " <<
+							codings[ rhs.mColorCoding - DC1394_COLOR_CODING_MIN ] << "]";
+					else
+						lhs << "[" << rhs.mResolution.x << "x" << rhs.mResolution.y <<
+							"@" << rhs.mFrameRate << " " <<
+							modes[ rhs.mVideoMode - DC1394_VIDEO_MODE_MIN ] << " " <<
+							codings[ rhs.mColorCoding - DC1394_COLOR_CODING_MIN ] << "]";
+
+					return lhs;
+				}
 		};
 
 		//! Class for implementing libdc1394 devices.
