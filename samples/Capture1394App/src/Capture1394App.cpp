@@ -74,7 +74,7 @@ void Capture1394App::setup()
 		Capture1394::DeviceRef device = devices[ 0 ];
 		// query the supported video modes
 		const vector< Capture1394::VideoMode > &videoModes = device->getSupportedVideoModes();
-		console() << "Camera: " << dref->getName() << endl;
+		console() << "Camera: " << device->getName() << endl;
 		console() << "Video modes: " << endl;
 		for ( vector< Capture1394::VideoMode >::const_iterator it = videoModes.begin();
 				it != videoModes.end(); ++it )
@@ -82,8 +82,8 @@ void Capture1394App::setup()
 			console() << *it << endl;
 		}
 		Capture1394::Options options;
-		//options.setVideoMode( vmodes[ 8 ] );
-		//options.setVideoMode( vmodes[ 0 ] );
+		options.discardFrames( true ).videoMode( videoModes[ 8 ] );
+		//options.setVideoMode( videoModes[ 0 ] );
 		mCapture1394 = Capture1394::create( options );
 		mCapture1394->start();
 	}

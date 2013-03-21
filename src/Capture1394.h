@@ -131,23 +131,29 @@ class Capture1394
 		class Options
 		{
 			public:
-				/** Default constructor with automatic video mode,
-				    DC1394_OPERATION_MODE_LEGACY operation mode.
-				*/
-				Options() : mOperationMode( DC1394_OPERATION_MODE_LEGACY ) {}
+				Options() : mOperationMode( DC1394_OPERATION_MODE_LEGACY ), mDiscardFrames( true ) {}
 
+				//! Sets video mode. Default is automatic.
 				Options &videoMode( const VideoMode &videoMode ) { mVideoMode = videoMode; return *this; }
 				void setVideoMode( const VideoMode &videoMode ) { mVideoMode = videoMode; }
 				const VideoMode & getVideoMode() const { return mVideoMode; }
 
-				//! \a operationMode is one of DC1394_OPERATION_MODE_LEGACY, DC1394_OPERATION_MODE_1394B.
+				/** Sets operation mode, \a operationMode is one of DC1394_OPERATION_MODE_LEGACY, DC1394_OPERATION_MODE_1394B.
+				 *  Default is DC1394_OPERATION_MODE_LEGACY
+				 */
 				Options &operationMode( dc1394operation_mode_t operationMode ) { mOperationMode = operationMode; return *this; }
 				void setOperationMode( dc1394operation_mode_t operationMode ) { mOperationMode = operationMode; }
 				dc1394operation_mode_t getOperationMode() { return mOperationMode; }
 
+				//! Enables frame discarding. Default is on.
+				Options &discardFrames( bool discard ) { mDiscardFrames = discard; return *this; }
+				void setDiscardFrames( bool discard ) { mDiscardFrames = discard; }
+				bool getDiscardFrames() { return mDiscardFrames; }
+
 			private:
 				VideoMode mVideoMode;
 				dc1394operation_mode_t mOperationMode;
+				bool mDiscardFrames;
 		};
 
 

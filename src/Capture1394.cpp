@@ -63,7 +63,7 @@ dc1394_t * ContextManager::getContext()
 	{
 		sContext = dc1394_new();
 		if ( sContext == NULL )
-			throw Capture1394Exc( "Cannot initialize libdc1394." );
+			throw Capture1394Exc( "Failed to initialize libdc1394." );
 	}
 	return sContext;
 }
@@ -232,9 +232,31 @@ void Capture1394::Obj::stop()
 
 bool Capture1394::Obj::getSurface( ci::Surface8u *surface )
 {
+	// TODO make this threaded
 	dc1394camera_t *camera = mDevice->getNative();
 	dc1394video_frame_t *frame = NULL;
-	Capture1394::checkError( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_POLL, &frame ) );
+
+	// drain all frames
+	if ( mOptions.getDiscardFrames() )
+	{
+		bool empty = false;
+		while ( !empty )
+		{
+			if ( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_POLL, &frame ) == DC1394_SUCCESS )
+			{
+				if ( frame != NULL )
+					dc1394_capture_enqueue( camera, frame );
+				else
+					empty = true;
+			}
+			else
+			{
+				empty = true;
+			}
+		}
+	}
+
+	Capture1394::checkError( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_WAIT, &frame ) );
 
 	if ( !frame )
 	{
