@@ -23,6 +23,7 @@
 
 #include "cinder/Cinder.h"
 #include "cinder/Surface.h"
+#include "cinder/Thread.h"
 
 #include <dc1394/dc1394.h>
 
@@ -166,6 +167,8 @@ class Capture1394
 		void start() { mObj->start(); }
 		//! Stop capturing video.
 		void stop() { mObj->stop(); }
+		//! Is the device capturing video
+		bool isCapturing() const { return mObj->mIsCapturing; }
 
 		//! Returns the width of the captured image in pixels.
 		int32_t getWidth() const { return mObj->getWidth(); }
@@ -178,10 +181,11 @@ class Capture1394
 		//! Returns the bounding rectangle of the capture imagee, which is Area( 0, 0, width, height )
 		ci::Area getBounds() const { return ci::Area( 0, 0, getWidth(), getHeight() ); }
 
-		/** Returns whether there is a proper video frame available and provides it in \a surface. If there is
-		 *  no frame available or the frame is corrupt the function returns false.
-		 */
-		bool getSurface( ci::Surface8u *surface ) { return mObj->getSurface( surface ); };
+		//! Returns whether there is a new video frame available since the last call to checkNewFrame().
+		bool checkNewFrame() const { return mObj->checkNewFrame(); }
+
+		//! Returns a Surface representing the current captured frame.
+		ci::Surface8u getSurface() const { return mObj->getSurface(); };
 
 		//! Returns a vector of all Devices connected to the system. If \a forceRefresh then the system will be polled for connected devices.
 		static const std::vector< DeviceRef > & getDevices( bool forceRefresh = false );
@@ -239,14 +243,23 @@ class Capture1394
 			int32_t getWidth() const { return mWidth; };
 			int32_t getHeight() const { return mHeight; };
 
-			bool getSurface( ci::Surface8u *surface );
+			bool checkNewFrame() const;
+			ci::Surface8u getSurface() const;
 
 			Options mOptions;
 			DeviceRef mDevice;
 			int32_t mWidth, mHeight;
 
+			std::shared_ptr< std::thread > mThread;
+			mutable std::mutex mMutex;
+			bool mThreadShouldQuit;
+
+			void threadedFunc();
+
 			std::shared_ptr< class SurfaceCache > mSurfaceCache;
-			ci::Surface8u mCurrentFrame;
+			ci::Surface8u mCurrentSurface;
+			mutable bool mHasNewFrame;
+			bool mIsCapturing;
 		};
 
 		std::shared_ptr< Obj > mObj;

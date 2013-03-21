@@ -82,7 +82,7 @@ void Capture1394App::setup()
 			console() << *it << endl;
 		}
 		Capture1394::Options options;
-		options.discardFrames( true ).videoMode( videoModes[ 8 ] );
+		options.videoMode( videoModes[ 6 ] );
 		//options.setVideoMode( videoModes[ 0 ] );
 		mCapture1394 = Capture1394::create( options );
 		mCapture1394->start();
@@ -101,18 +101,9 @@ void Capture1394App::update()
 	if ( mVerticalSyncEnabled != gl::isVerticalSyncEnabled() )
 		gl::enableVerticalSync( mVerticalSyncEnabled );
 
-	try
+	if ( mCapture1394->checkNewFrame() )
 	{
-		Surface8u captureSurface;
-		if ( mCapture1394 && mCapture1394->getSurface( &captureSurface ) )
-		{
-			mTexture = gl::Texture( captureSurface );
-		}
-	}
-	catch ( const Capture1394Exc &exc )
-	{
-		console() << exc.what() << endl;
-		quit();
+		mTexture = gl::Texture( mCapture1394->getSurface() );
 	}
 }
 

@@ -185,7 +185,8 @@ Capture1394::Capture1394( const Options &options, const DeviceRef device ) :
 {}
 
 Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef device ) :
-	mOptions( options ), mDevice( device )
+	mOptions( options ), mDevice( device ), mHasNewFrame( false ),
+	mIsCapturing( false )
 {
 	if ( !device )
 	{
@@ -215,97 +216,114 @@ Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef devi
 
 Capture1394::Obj::~Obj()
 {
-	dc1394camera_t *camera = mDevice->getNative();
-	Capture1394::checkError( dc1394_video_set_transmission( camera, DC1394_OFF ) );
-	Capture1394::checkError( dc1394_capture_stop( camera ) );
+	stop();
+	Capture1394::checkError( dc1394_capture_stop( mDevice->getNative() ) );
 }
 
 void Capture1394::Obj::start()
 {
+	mThread = shared_ptr< thread >( new thread( bind( &Capture1394::Obj::threadedFunc, this ) ) );
+	mHasNewFrame = false;
+	mIsCapturing = true;
 	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_ON ) );
 }
 
 void Capture1394::Obj::stop()
 {
+	if ( mThread )
+	{
+		mThreadShouldQuit = true;
+		mThread->join();
+		mThread.reset();
+	}
 	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_OFF ) );
+	mIsCapturing = false;
 }
 
-bool Capture1394::Obj::getSurface( ci::Surface8u *surface )
+void Capture1394::Obj::threadedFunc()
 {
 	// TODO make this threaded
 	dc1394camera_t *camera = mDevice->getNative();
 	dc1394video_frame_t *frame = NULL;
 
-	// drain all frames
-	if ( mOptions.getDiscardFrames() )
+	mThreadShouldQuit = false;
+	while ( !mThreadShouldQuit )
 	{
-		bool empty = false;
-		while ( !empty )
+		// drain all frames
+		if ( mOptions.getDiscardFrames() )
 		{
-			if ( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_POLL, &frame ) == DC1394_SUCCESS )
+			bool empty = false;
+			while ( !empty )
 			{
-				if ( frame != NULL )
-					dc1394_capture_enqueue( camera, frame );
+				if ( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_POLL, &frame ) == DC1394_SUCCESS )
+				{
+					if ( frame != NULL )
+						dc1394_capture_enqueue( camera, frame );
+					else
+						empty = true;
+				}
 				else
+				{
 					empty = true;
-			}
-			else
-			{
-				empty = true;
+				}
 			}
 		}
-	}
 
-	Capture1394::checkError( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_WAIT, &frame ) );
+		Capture1394::checkError( dc1394_capture_dequeue( camera, DC1394_CAPTURE_POLICY_WAIT, &frame ) );
 
-	if ( !frame )
-	{
-		// no new frame
-		return false;
-	}
-	else
-	if ( dc1394_capture_is_frame_corrupt( camera, frame ) )
-	{
-		// frame is corrupt
-		Capture1394::checkError( dc1394_capture_enqueue( camera, frame ) );
-		ci::app::console() << "corrupt frame! " << ci::app::getElapsedFrames() << endl;
-		return false;
-	}
-	else
-	{
-		*surface = mSurfaceCache->getNewSurface();
-		dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
-		if ( ( DC1394_VIDEO_MODE_FORMAT7_MIN <= videoMode ) &&
-			 ( videoMode <= DC1394_VIDEO_MODE_FORMAT7_MAX ) )
+		if ( frame )
 		{
-			Capture1394::checkError( dc1394_bayer_decoding_8bit(
-						frame->image, surface->getData(), mWidth, mHeight,
-						DC1394_COLOR_FILTER_RGGB, DC1394_BAYER_METHOD_BILINEAR ) );
-		}
-		else
-		{
-			dc1394color_coding_t colorCoding = mOptions.getVideoMode().getColorCoding();
-			uint32_t bits; // TODO: is this calculation correct?
-			switch ( colorCoding )
+			if ( !dc1394_capture_is_frame_corrupt( camera, frame ) )
 			{
-				case DC1394_COLOR_CODING_RGB16:
-				case DC1394_COLOR_CODING_MONO16:
-				case DC1394_COLOR_CODING_RAW16:
-					bits = 16;
-					break;
+				lock_guard< mutex > lock( mMutex );
+				ci::Surface8u surface = mSurfaceCache->getNewSurface();
+				dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
+				if ( ( DC1394_VIDEO_MODE_FORMAT7_MIN <= videoMode ) &&
+						( videoMode <= DC1394_VIDEO_MODE_FORMAT7_MAX ) )
+				{
+					Capture1394::checkError( dc1394_bayer_decoding_8bit(
+								frame->image, surface.getData(), mWidth, mHeight,
+								DC1394_COLOR_FILTER_RGGB, DC1394_BAYER_METHOD_BILINEAR ) );
+				}
+				else
+				{
+					dc1394color_coding_t colorCoding = mOptions.getVideoMode().getColorCoding();
+					uint32_t bits; // TODO: is this calculation correct?
+					switch ( colorCoding )
+					{
+						case DC1394_COLOR_CODING_RGB16:
+						case DC1394_COLOR_CODING_MONO16:
+						case DC1394_COLOR_CODING_RAW16:
+							bits = 16;
+							break;
 
-				default:
-					bits = 8;
-					break;
+						default:
+							bits = 8;
+							break;
+					}
+					Capture1394::checkError( dc1394_convert_to_RGB8(
+								frame->image, surface.getData(), mWidth, mHeight,
+								frame->yuv_byte_order, colorCoding, bits ) );
+				}
+				mCurrentSurface = surface;
+				mHasNewFrame = true;
 			}
-			Capture1394::checkError( dc1394_convert_to_RGB8(
-						frame->image, surface->getData(), mWidth, mHeight,
-						frame->yuv_byte_order, colorCoding, bits ) );
+			Capture1394::checkError( dc1394_capture_enqueue( camera, frame ) );
 		}
-		Capture1394::checkError( dc1394_capture_enqueue( camera, frame ) );
 	}
+}
 
-	return true;
+bool Capture1394::Obj::checkNewFrame() const
+{
+	lock_guard< mutex > lock( mMutex );
+	return mHasNewFrame;
+}
+
+ci::Surface8u Capture1394::Obj::getSurface() const
+{
+	lock_guard< mutex > lock( mMutex );
+	mHasNewFrame = false;
+	return mCurrentSurface;
 }
 
 Capture1394Exc::Capture1394Exc( dc1394error_t err ) throw()
