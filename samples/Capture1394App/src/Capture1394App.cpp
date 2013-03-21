@@ -70,11 +70,17 @@ void Capture1394App::setup()
 			quit();
 		}
 
-		//Capture1394::DeviceRef dref = Capture1394::findDeviceByNameContains( "FMVU-03MTM" );
-		Capture1394::DeviceRef dref = devices[ 0 ];
-		const vector< Capture1394::VideoMode > &vmodes = dref->getSupportedVideoModes();
-		for ( auto &mode : vmodes )
-			console() << mode << endl;
+		// select the first camera
+		Capture1394::DeviceRef device = devices[ 0 ];
+		// query the supported video modes
+		const vector< Capture1394::VideoMode > &videoModes = device->getSupportedVideoModes();
+		console() << "Camera: " << dref->getName() << endl;
+		console() << "Video modes: " << endl;
+		for ( vector< Capture1394::VideoMode >::const_iterator it = videoModes.begin();
+				it != videoModes.end(); ++it )
+		{
+			console() << *it << endl;
+		}
 		Capture1394::Options options;
 		//options.setVideoMode( vmodes[ 8 ] );
 		//options.setVideoMode( vmodes[ 0 ] );
@@ -84,6 +90,7 @@ void Capture1394App::setup()
 	catch ( const Capture1394Exc &exc )
 	{
 		console() << exc.what() << endl;
+		quit();
 	}
 }
 
@@ -97,7 +104,7 @@ void Capture1394App::update()
 	try
 	{
 		Surface8u captureSurface;
-		if ( mCapture1394->getSurface( &captureSurface ) )
+		if ( mCapture1394 && mCapture1394->getSurface( &captureSurface ) )
 		{
 			mTexture = gl::Texture( captureSurface );
 		}
@@ -105,6 +112,7 @@ void Capture1394App::update()
 	catch ( const Capture1394Exc &exc )
 	{
 		console() << exc.what() << endl;
+		quit();
 	}
 }
 

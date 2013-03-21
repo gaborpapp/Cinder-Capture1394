@@ -1,3 +1,20 @@
+/*
+ Copyright (C) 2013 Gabor Papp
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as published
+ by the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public License
+ along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 
 #include <exception>
@@ -11,7 +28,7 @@
 
 namespace mndl {
 
-typedef std::shared_ptr< class Capture1394 >  Capture1394Ref;
+typedef std::shared_ptr< class Capture1394 > Capture1394Ref;
 
 class Capture1394
 {
@@ -137,8 +154,6 @@ class Capture1394
 		static Capture1394Ref create( const Options &options = Options(), const DeviceRef device = DeviceRef() ) { return Capture1394Ref( new Capture1394( options, device ) ); }
 
 		Capture1394() {}
-		//! \deprecated Call Capture1394::create() instead
-		Capture1394( const Options &options = Options(), const DeviceRef device = DeviceRef() );
 		~Capture1394() {}
 
 		//! Begin capturing video.
@@ -157,7 +172,9 @@ class Capture1394
 		//! Returns the bounding rectangle of the capture imagee, which is Area( 0, 0, width, height )
 		ci::Area getBounds() const { return ci::Area( 0, 0, getWidth(), getHeight() ); }
 
-		//! Returns whether there is a proper video frame available and provides it in \a surface.
+		/** Returns whether there is a proper video frame available and provides it in \a surface. If there is
+		 *  no frame available or the frame is corrupt the function returns false.
+		 */
 		bool getSurface( ci::Surface8u *surface ) { return mObj->getSurface( surface ); };
 
 		//! Returns a vector of all Devices connected to the system. If \a forceRefresh then the system will be polled for connected devices.
@@ -198,6 +215,8 @@ class Capture1394
 		};
 
 	protected:
+		Capture1394( const Options &options = Options(), const DeviceRef device = DeviceRef() );
+
 		static void checkError( dc1394error_t err );
 
 		static bool sDevicesEnumerated;

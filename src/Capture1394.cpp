@@ -1,3 +1,20 @@
+/*
+ Copyright (C) 2013 Gabor Papp
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as published
+ by the Free Software Foundation; either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public License
+ along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <cstring>
 
 #include "Cinder/app/App.h"
@@ -46,7 +63,7 @@ dc1394_t * ContextManager::getContext()
 	{
 		sContext = dc1394_new();
 		if ( sContext == NULL )
-			throw Capture1394Exc( "Cannot initialize Dc1394." );
+			throw Capture1394Exc( "Cannot initialize libdc1394." );
 	}
 	return sContext;
 }
@@ -271,12 +288,14 @@ bool Capture1394::Obj::getSurface( ci::Surface8u *surface )
 
 Capture1394Exc::Capture1394Exc( dc1394error_t err ) throw()
 {
-	strncpy( mMessage, dc1394_error_get_string( err ), 128 );
+	strcpy( mMessage, "Capture1394: " );
+	strncat( mMessage, dc1394_error_get_string( err ), 110 );
 }
 
 Capture1394Exc::Capture1394Exc( const string &log ) throw()
 {
-	strncpy( mMessage, log.c_str(), 128 );
+	strcpy( mMessage, "Capture1394: " );
+	strncat( mMessage, log.c_str(), 110 );
 }
 
 }; // namespace mndl
