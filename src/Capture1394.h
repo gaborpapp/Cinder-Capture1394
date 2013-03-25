@@ -50,6 +50,7 @@ class Capture1394
 					mResolution( res ), mVideoMode( videoMode ), mColorCoding( coding ),
 					mFrameRate( frameRate ), mAutoVideoMode( false ) {}
 
+				//! TODO: the resolution is set by the videomode, this has no effect yet
 				VideoMode & resolution( const ci::Vec2i &resolution ) { mResolution = resolution; return *this; }
 				void setResolution( const ci::Vec2i &resolution ) { mResolution = resolution; }
 				const ci::Vec2i & getResolution() const { return mResolution; }
@@ -185,7 +186,10 @@ class Capture1394
 		bool checkNewFrame() const { return mObj->checkNewFrame(); }
 
 		//! Returns a Surface representing the current captured frame.
-		ci::Surface8u getSurface() const { return mObj->getSurface(); };
+		ci::Surface8u getSurface() const { return mObj->getSurface(); }
+
+		//! Returns the associated Device for this instance of Capture1394
+		const DeviceRef getDevice() const { return mObj->mDevice; }
 
 		//! Returns a vector of all Devices connected to the system. If \a forceRefresh then the system will be polled for connected devices.
 		static const std::vector< DeviceRef > & getDevices( bool forceRefresh = false );
@@ -224,10 +228,10 @@ class Capture1394
 				friend class Capture1394;
 		};
 
+		static void checkError( dc1394error_t err );
+
 	protected:
 		Capture1394( const Options &options = Options(), const DeviceRef device = DeviceRef() );
-
-		static void checkError( dc1394error_t err );
 
 		static bool sDevicesEnumerated;
 		static std::vector< Capture1394::DeviceRef > sDevices;

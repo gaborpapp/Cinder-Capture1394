@@ -41,7 +41,7 @@ class ContextManager
 		static std::shared_ptr< ContextManager > sInstance;
 };
 
-dc1394_t * ContextManager::sContext;
+dc1394_t *ContextManager::sContext = NULL;
 shared_ptr< ContextManager > ContextManager::sInstance;
 
 ContextManager::~ContextManager()

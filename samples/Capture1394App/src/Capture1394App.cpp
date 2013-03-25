@@ -61,6 +61,7 @@ void Capture1394App::setup()
 	mParams.addParam( "Fps", &mFps, "", true );
 	mParams.addParam( "Vertical sync", &mVerticalSyncEnabled );
 
+	setFrameRate( 1000 );
 	try
 	{
 		const vector < Capture1394::DeviceRef > &devices = Capture1394::getDevices();

@@ -1,0 +1,11 @@
+env = Environment()
+
+env['APP_TARGET'] = 'Capture1394ParamsApp'
+env['APP_SOURCES'] = ['Capture1394ParamsApp.cpp']
+env['DEBUG'] = 1
+
+# Cinder-Capture1394
+env = SConscript('../../../scons/SConscript', exports = 'env')
+
+SConscript('../../../../../scons/SConscript', exports = 'env')
+
