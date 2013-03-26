@@ -33,6 +33,19 @@ SurfaceCache::SurfaceCache( int32_t width, int32_t height, ci::SurfaceChannelOrd
 	}
 }
 
+void SurfaceCache::resize( int32_t width, int32_t height )
+{
+	if ( ( mWidth == width ) && ( mHeight == height ) )
+		return;
+
+	mWidth = width;
+	mHeight = height;
+	for ( unsigned i = 0; i < mSurfaceData.size(); ++i )
+	{
+		mSurfaceData[ i ] = std::shared_ptr<uint8_t>( new uint8_t[ width * height * mSCO.getPixelInc()], checked_array_deleter<uint8_t>() );
+	}
+}
+
 ci::Surface8u SurfaceCache::getNewSurface()
 {
 	// try to find an available block of pixel data to wrap a surface around
@@ -53,7 +66,7 @@ ci::Surface8u SurfaceCache::getNewSurface()
 
 void SurfaceCache::surfaceDeallocator( void *refcon )
 {
-	std::pair< SurfaceCache*, int > *info = reinterpret_cast< std::pair< SurfaceCache *,int > *>( refcon );
+	std::pair< SurfaceCache *, int > *info = reinterpret_cast< std::pair< SurfaceCache *, int > *>( refcon );
 	info->first->mSurfaceUsed[ info->second ] = false;
 }
 

@@ -70,12 +70,30 @@ void Capture1394Params::Obj::setupParams()
 	if ( !mCaptures[ mCurrentCapture ] )
 		return;
 
+	// video modes
+	vector< string > videoModeNames;
+	const vector< Capture1394::VideoMode > &videoModes = mCaptures[ mCurrentCapture ]->getDevice()->getSupportedVideoModes();
+	for ( auto it = videoModes.cbegin(); it != videoModes.cend(); ++it )
+	{
+		stringstream videoMode;
+		videoMode << *it;
+		videoModeNames.push_back( videoMode.str() );
+	}
+	mVideoMode = 0;
+	mParams.addParam( "Video modes", videoModeNames, &mVideoMode );
+
+	// features
 	dc1394camera_t *camera = mCaptures[ mCurrentCapture ]->getDevice()->getNative();
 	Capture1394::checkError( dc1394_feature_get_all( camera, &mFeatureSet ) );
 	for ( int i = 0; i < DC1394_FEATURE_NUM; i++ )
 	{
 		const dc1394feature_info_t &feature = mFeatureSet.feature[ i ];
 		if ( !feature.available )
+			continue;
+
+		// TODO: support trigger
+		if ( ( feature.id == DC1394_FEATURE_TRIGGER ) ||
+			 ( feature.id == DC1394_FEATURE_TRIGGER_DELAY ) )
 			continue;
 
 		mFeatures[ i ].mId = feature.id;
@@ -123,6 +141,7 @@ void Capture1394Params::Obj::setupParams()
 void Capture1394Params::Obj::update()
 {
 	static int prevCapture = -1;
+	static int prevVideoMode = 0;
 
 	// check active capture device
 	if ( prevCapture != mCurrentCapture )
@@ -142,8 +161,17 @@ void Capture1394Params::Obj::update()
 	if ( !mCaptures[ mCurrentCapture ] )
 		return;
 
-	// iterate features looking for changes, since params has no change callbacks
 	dc1394camera_t *camera = mCaptures[ mCurrentCapture ]->getDevice()->getNative();
+
+	// video mode
+	if ( prevVideoMode != mVideoMode )
+	{
+		const vector< Capture1394::VideoMode > &videoModes = mCaptures[ mCurrentCapture ]->getDevice()->getSupportedVideoModes();
+		mCaptures[ mCurrentCapture ]->setVideoMode( videoModes[ mVideoMode ] );
+		prevVideoMode = mVideoMode;
+	}
+
+	// iterate features looking for changes, since params has no change callbacks
 	for ( int i = 0; i < DC1394_FEATURE_NUM; i++ )
 	{
 		if ( mFeatures[ i ] == mPrevFeatures[ i ] )

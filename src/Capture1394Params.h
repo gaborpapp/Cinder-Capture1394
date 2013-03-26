@@ -71,6 +71,7 @@ class Capture1394Params
 			std::vector< Capture1394Ref > mCaptures;
 			std::vector< std::string > mDeviceNames;
 			int mCurrentCapture;
+			int mVideoMode;
 
 			void setupParams();
 			ci::params::InterfaceGl mParams;

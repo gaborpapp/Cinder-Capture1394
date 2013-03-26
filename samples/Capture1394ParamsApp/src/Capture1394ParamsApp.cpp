@@ -54,7 +54,15 @@ void Capture1394ParamsApp::prepareSettings( Settings *settings )
 void Capture1394ParamsApp::setup()
 {
 	setFrameRate( 1000 );
-	mCapture1394Params = Capture1394Params::create();
+	try
+	{
+		mCapture1394Params = Capture1394Params::create();
+	}
+	catch( Capture1394Exc &exc )
+	{
+		console() << exc.what() << endl;
+		quit();
+	}
 }
 
 void Capture1394ParamsApp::update()
@@ -62,7 +70,14 @@ void Capture1394ParamsApp::update()
 	if ( mVerticalSyncEnabled != gl::isVerticalSyncEnabled() )
 		gl::enableVerticalSync( mVerticalSyncEnabled );
 
-	mCapture1394Params->update();
+	try
+	{
+		mCapture1394Params->update();
+	}
+	catch( Capture1394Exc &exc )
+	{
+		console() << exc.what() << endl;
+	}
 
 	const Capture1394Ref captureRef = mCapture1394Params->getCurrentCaptureRef();
 	if ( captureRef && captureRef->checkNewFrame() )

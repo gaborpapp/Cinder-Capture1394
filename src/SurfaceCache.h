@@ -9,6 +9,7 @@ class SurfaceCache
 {
 	public:
 		SurfaceCache( int32_t width, int32_t height, ci::SurfaceChannelOrder sco, int numSurfaces );
+		void resize( int32_t width, int32_t height );
 		ci::Surface8u getNewSurface();
 		static void surfaceDeallocator( void *refcon );
 

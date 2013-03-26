@@ -200,32 +200,62 @@ Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef devi
 		mOptions.setVideoMode( videoMode );
 	}
 
-	mWidth = mOptions.getVideoMode().getResolution().x;
-	mHeight = mOptions.getVideoMode().getResolution().y;
-	mSurfaceCache = std::shared_ptr< SurfaceCache >( new SurfaceCache( mWidth, mHeight, ci::SurfaceChannelOrder::RGB, 4 ) );
-
 	Capture1394::checkError( dc1394_video_set_operation_mode( camera, mOptions.getOperationMode() ) );
 
-	dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
 	Capture1394::checkError( dc1394_video_set_iso_speed( camera, DC1394_ISO_SPEED_400 ) );
-	Capture1394::checkError( dc1394_video_set_mode( camera, videoMode ) );
-	if ( ( videoMode < DC1394_VIDEO_MODE_FORMAT7_MIN ) || ( DC1394_VIDEO_MODE_FORMAT7_MAX < videoMode ) )
-		Capture1394::checkError( dc1394_video_set_framerate( camera, mOptions.getVideoMode().getFrameRate() ) );
-	Capture1394::checkError( dc1394_capture_setup( camera, 16, DC1394_CAPTURE_FLAGS_DEFAULT ) );
+	setVideoMode( mOptions.getVideoMode() );
 }
 
 Capture1394::Obj::~Obj()
 {
 	stop();
-	Capture1394::checkError( dc1394_capture_stop( mDevice->getNative() ) );
+}
+
+void Capture1394::Obj::setVideoMode( const VideoMode &videoMode )
+{
+	bool wasCapturing = mIsCapturing;
+	if ( mIsCapturing )
+		stop();
+	{
+	lock_guard< mutex > lock( mMutex );
+	mOptions.setVideoMode( videoMode );
+
+	mWidth = mOptions.getVideoMode().getResolution().x;
+	mHeight = mOptions.getVideoMode().getResolution().y;
+	if ( !mSurfaceCache )
+		mSurfaceCache = std::shared_ptr< SurfaceCache >( new SurfaceCache( mWidth, mHeight, ci::SurfaceChannelOrder::RGB, 4 ) );
+	else
+		mSurfaceCache->resize( mWidth, mHeight );
+
+	dc1394video_mode_t dcVideoMode = mOptions.getVideoMode().getVideoMode();
+	if ( ( dcVideoMode < DC1394_VIDEO_MODE_FORMAT7_MIN ) || ( DC1394_VIDEO_MODE_FORMAT7_MAX < dcVideoMode ) )
+	{
+		Capture1394::checkError( dc1394_video_set_framerate( mDevice->getNative(), mOptions.getVideoMode().getFrameRate() ) );
+	}
+	else
+	{
+		//check_error(dc1394_format7_get_max_image_size(mCamera, mVideoMode, &mMaxWidth, &mMaxHeight));
+		Capture1394::checkError( dc1394_format7_set_roi( mDevice->getNative(),
+					dcVideoMode,
+					mOptions.getVideoMode().getColorCoding(),
+					DC1394_USE_MAX_AVAIL,
+					0, 0, mWidth, mHeight ) );
+	}
+
+	Capture1394::checkError( dc1394_video_set_mode( mDevice->getNative(), dcVideoMode ) );
+	mHasNewFrame = false;
+	}
+	if ( wasCapturing )
+		start();
 }
 
 void Capture1394::Obj::start()
 {
+	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_ON ) );
+	Capture1394::checkError( dc1394_capture_setup( mDevice->getNative(), 8, DC1394_CAPTURE_FLAGS_DEFAULT ) );
 	mThread = shared_ptr< thread >( new thread( bind( &Capture1394::Obj::threadedFunc, this ) ) );
 	mHasNewFrame = false;
 	mIsCapturing = true;
-	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_ON ) );
 }
 
 void Capture1394::Obj::stop()
@@ -237,12 +267,12 @@ void Capture1394::Obj::stop()
 		mThread.reset();
 	}
 	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_OFF ) );
+	Capture1394::checkError( dc1394_capture_stop( mDevice->getNative() ) );
 	mIsCapturing = false;
 }
 
 void Capture1394::Obj::threadedFunc()
 {
-	// TODO make this threaded
 	dc1394camera_t *camera = mDevice->getNative();
 	dc1394video_frame_t *frame = NULL;
 
@@ -273,6 +303,12 @@ void Capture1394::Obj::threadedFunc()
 
 		if ( frame )
 		{
+			dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
+			dc1394video_mode_t realMode;
+			Capture1394::checkError( dc1394_video_get_mode( camera, &realMode ) );
+			ci::app::console() << "new frame " << videoMode << " real: " << realMode << " " <<
+				mWidth << "x" << mHeight <<
+				" frame: " << frame->size[ 0 ] << "x" << frame->size[ 1 ] << endl;
 			if ( !dc1394_capture_is_frame_corrupt( camera, frame ) )
 			{
 				lock_guard< mutex > lock( mMutex );

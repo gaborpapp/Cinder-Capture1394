@@ -171,6 +171,9 @@ class Capture1394
 		//! Is the device capturing video
 		bool isCapturing() const { return mObj->mIsCapturing; }
 
+		//! Sets video mode
+		void setVideoMode( const VideoMode &videoMode ) { mObj->setVideoMode( videoMode ); }
+
 		//! Returns the width of the captured image in pixels.
 		int32_t getWidth() const { return mObj->getWidth(); }
 		//! Returns the height of the captured image in pixels.
@@ -259,6 +262,8 @@ class Capture1394
 			bool mThreadShouldQuit;
 
 			void threadedFunc();
+
+			void setVideoMode( const VideoMode &videoMode );
 
 			std::shared_ptr< class SurfaceCache > mSurfaceCache;
 			ci::Surface8u mCurrentSurface;

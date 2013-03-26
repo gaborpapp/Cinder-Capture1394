@@ -83,7 +83,7 @@ void Capture1394App::setup()
 			console() << *it << endl;
 		}
 		Capture1394::Options options;
-		options.videoMode( videoModes[ 6 ] );
+		options.videoMode( videoModes[ 10 ] );
 		//options.setVideoMode( videoModes[ 0 ] );
 		mCapture1394 = Capture1394::create( options );
 		mCapture1394->start();
