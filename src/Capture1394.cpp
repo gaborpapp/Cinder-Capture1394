@@ -200,6 +200,17 @@ Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef devi
 		mOptions.setVideoMode( videoMode );
 	}
 
+	// allocate surface cache for the maximum resolution
+	auto videoModes = mDevice->getSupportedVideoModes();
+	ci::Vec2i maxRes( 0, 0 );
+	for ( auto it = videoModes.cbegin(); it != videoModes.cend(); ++it )
+	{
+		ci::Vec2i res = it->getResolution();
+		if ( maxRes.x * maxRes.y < res.x * res.y )
+			maxRes = res;
+	}
+	mSurfaceCache = std::shared_ptr< SurfaceCache >( new SurfaceCache( maxRes.x, maxRes.y, ci::SurfaceChannelOrder::RGB, 8 ) );
+
 	Capture1394::checkError( dc1394_video_set_operation_mode( camera, mOptions.getOperationMode() ) );
 
 	Capture1394::checkError( dc1394_video_set_iso_speed( camera, DC1394_ISO_SPEED_400 ) );
@@ -217,33 +228,29 @@ void Capture1394::Obj::setVideoMode( const VideoMode &videoMode )
 	if ( mIsCapturing )
 		stop();
 	{
-	lock_guard< mutex > lock( mMutex );
-	mOptions.setVideoMode( videoMode );
+		lock_guard< mutex > lock( mMutex );
+		mOptions.setVideoMode( videoMode );
 
-	mWidth = mOptions.getVideoMode().getResolution().x;
-	mHeight = mOptions.getVideoMode().getResolution().y;
-	if ( !mSurfaceCache )
-		mSurfaceCache = std::shared_ptr< SurfaceCache >( new SurfaceCache( mWidth, mHeight, ci::SurfaceChannelOrder::RGB, 4 ) );
-	else
+		mWidth = mOptions.getVideoMode().getResolution().x;
+		mHeight = mOptions.getVideoMode().getResolution().y;
 		mSurfaceCache->resize( mWidth, mHeight );
 
-	dc1394video_mode_t dcVideoMode = mOptions.getVideoMode().getVideoMode();
-	if ( ( dcVideoMode < DC1394_VIDEO_MODE_FORMAT7_MIN ) || ( DC1394_VIDEO_MODE_FORMAT7_MAX < dcVideoMode ) )
-	{
-		Capture1394::checkError( dc1394_video_set_framerate( mDevice->getNative(), mOptions.getVideoMode().getFrameRate() ) );
-	}
-	else
-	{
-		//check_error(dc1394_format7_get_max_image_size(mCamera, mVideoMode, &mMaxWidth, &mMaxHeight));
-		Capture1394::checkError( dc1394_format7_set_roi( mDevice->getNative(),
-					dcVideoMode,
-					mOptions.getVideoMode().getColorCoding(),
-					DC1394_USE_MAX_AVAIL,
-					0, 0, mWidth, mHeight ) );
-	}
+		dc1394video_mode_t dcVideoMode = mOptions.getVideoMode().getVideoMode();
+		if ( ( dcVideoMode < DC1394_VIDEO_MODE_FORMAT7_MIN ) || ( DC1394_VIDEO_MODE_FORMAT7_MAX < dcVideoMode ) )
+		{
+			Capture1394::checkError( dc1394_video_set_framerate( mDevice->getNative(), mOptions.getVideoMode().getFrameRate() ) );
+		}
+		else
+		{
+			Capture1394::checkError( dc1394_format7_set_roi( mDevice->getNative(),
+						dcVideoMode,
+						mOptions.getVideoMode().getColorCoding(),
+						DC1394_USE_MAX_AVAIL,
+						0, 0, mWidth, mHeight ) );
+		}
 
-	Capture1394::checkError( dc1394_video_set_mode( mDevice->getNative(), dcVideoMode ) );
-	mHasNewFrame = false;
+		Capture1394::checkError( dc1394_video_set_mode( mDevice->getNative(), dcVideoMode ) );
+		mHasNewFrame = false;
 	}
 	if ( wasCapturing )
 		start();
@@ -303,12 +310,6 @@ void Capture1394::Obj::threadedFunc()
 
 		if ( frame )
 		{
-			dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
-			dc1394video_mode_t realMode;
-			Capture1394::checkError( dc1394_video_get_mode( camera, &realMode ) );
-			ci::app::console() << "new frame " << videoMode << " real: " << realMode << " " <<
-				mWidth << "x" << mHeight <<
-				" frame: " << frame->size[ 0 ] << "x" << frame->size[ 1 ] << endl;
 			if ( !dc1394_capture_is_frame_corrupt( camera, frame ) )
 			{
 				lock_guard< mutex > lock( mMutex );
