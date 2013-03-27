@@ -260,6 +260,7 @@ void Capture1394::Obj::start()
 {
 	Capture1394::checkError( dc1394_video_set_transmission( mDevice->getNative(), DC1394_ON ) );
 	Capture1394::checkError( dc1394_capture_setup( mDevice->getNative(), 8, DC1394_CAPTURE_FLAGS_DEFAULT ) );
+	mThreadShouldQuit = false;
 	mThread = shared_ptr< thread >( new thread( bind( &Capture1394::Obj::threadedFunc, this ) ) );
 	mHasNewFrame = false;
 	mIsCapturing = true;
@@ -283,7 +284,6 @@ void Capture1394::Obj::threadedFunc()
 	dc1394camera_t *camera = mDevice->getNative();
 	dc1394video_frame_t *frame = NULL;
 
-	mThreadShouldQuit = false;
 	while ( !mThreadShouldQuit )
 	{
 		// drain all frames
