@@ -119,20 +119,18 @@ void Capture1394Params::Obj::setupParams()
 		mParams.addParam( name + " mode", modeNames, &mFeatures[ i ].mMode );
 
 		// values
-		stringstream ss;
 		mFeatures[ i ].mValue = feature.value;
-		ss << "min=" << feature.min << " max=" << feature.max;
 		bool readonly = feature.current_mode == DC1394_FEATURE_MODE_AUTO;
 		if ( feature.id == DC1394_FEATURE_WHITE_BALANCE )
 		{
 			mFeatures[ i ].mBUValue = feature.BU_value;
-			mParams.addParam( name + " B/U", &mFeatures[ i ].mBUValue, ss.str(), readonly );
+			mParams.addParam( name + " B/U", &mFeatures[ i ].mBUValue, readonly ).min( feature.min ).max( feature.max );
 			mFeatures[ i ].mRVValue = feature.RV_value;
-			mParams.addParam( name + " R/V", &mFeatures[ i ].mRVValue, ss.str(), readonly );
+			mParams.addParam( name + " R/V", &mFeatures[ i ].mRVValue, readonly ).min( feature.min ).max( feature.max );
 		}
 		else
 		{
-			mParams.addParam( name + " value", &mFeatures[ i ].mValue, ss.str(), readonly );
+			mParams.addParam( name + " value", &mFeatures[ i ].mValue ).min( feature.min ).max( feature.max );
 		}
 		mPrevFeatures[ i ] = mFeatures[ i ];
 	}

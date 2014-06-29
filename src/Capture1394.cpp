@@ -219,7 +219,8 @@ Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef devi
 
 Capture1394::Obj::~Obj()
 {
-	stop();
+	if ( mIsCapturing )
+		stop();
 }
 
 void Capture1394::Obj::setVideoMode( const VideoMode &videoMode )
