@@ -144,10 +144,12 @@ void Capture1394Params::Obj::update()
 	// check active capture device
 	if ( prevCapture != mCurrentCapture )
 	{
-		if ( ( prevCapture >= 0 ) && ( mCaptures[ prevCapture ] ) )
+		if ( ( prevCapture >= 0 ) && mCaptures[ prevCapture ] && mCaptures[ prevCapture ]->isCapturing() )
+		{
 			mCaptures[ prevCapture ]->stop();
+		}
 
-		if ( mCaptures[ mCurrentCapture ] )
+		if ( mCaptures[ mCurrentCapture ] && ( ! mCaptures[ mCurrentCapture ]->isCapturing() ) )
 		{
 			setupParams();
 			mCaptures[ mCurrentCapture ]->start();
