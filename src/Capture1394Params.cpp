@@ -26,10 +26,14 @@ using namespace std;
 namespace mndl {
 
 Capture1394Params::Capture1394Params() :
-	mObj( shared_ptr< Obj >( new Capture1394Params::Obj() ) )
+	mObj( shared_ptr< Obj >( new Capture1394Params::Obj( ci::app::App::get()->getWindow() ) ) )
 {}
 
-Capture1394Params::Obj::Obj() :
+Capture1394Params::Capture1394Params( const ci::app::WindowRef &window ) :
+	mObj( shared_ptr< Obj >( new Capture1394Params::Obj( window ) ) )
+{}
+
+Capture1394Params::Obj::Obj( const ci::app::WindowRef &window ) :
 	mCurrentCapture( 0 )
 {
 	const vector< Capture1394::DeviceRef > &devices = Capture1394::getDevices();
@@ -54,7 +58,7 @@ Capture1394Params::Obj::Obj() :
         mCaptures.push_back( Capture1394Ref() );
 		mDeviceNames.push_back( "Camera not available" );
 	}
-	mParams = ci::params::InterfaceGl( "Capture1394", ci::Vec2i( 350, 550 ) );
+	mParams = ci::params::InterfaceGl( window, "Capture1394", ci::Vec2i( 350, 550 ) );
 	setupParams();
 }
 

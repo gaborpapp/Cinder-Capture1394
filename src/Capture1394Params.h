@@ -17,12 +17,18 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "cinder/params/Params.h"
 
 #include "Capture1394.h"
+
+namespace cinder { namespace app {
+	class Window;
+	typedef std::shared_ptr< Window > WindowRef;
+} }
 
 namespace mndl {
 
@@ -31,6 +37,7 @@ class Capture1394Params
 {
 	public:
 		static Capture1394ParamsRef create() { return Capture1394ParamsRef( new Capture1394Params() ); }
+		static Capture1394ParamsRef create( const cinder::app::WindowRef &window ) { return Capture1394ParamsRef( new Capture1394Params( window ) ); }
 		~Capture1394Params() {}
 
 		void update() { mObj->update(); }
@@ -39,6 +46,7 @@ class Capture1394Params
 
 	protected:
 		Capture1394Params();
+		Capture1394Params( const cinder::app::WindowRef &window );
 
 		struct Feature
 		{
@@ -63,7 +71,7 @@ class Capture1394Params
 
 		struct Obj
 		{
-			Obj();
+			Obj( const cinder::app::WindowRef &window );
 			~Obj();
 
 			void update();
