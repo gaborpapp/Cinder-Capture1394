@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2013 Gabor Papp
+ Copyright (C) 2013-2014 Gabor Papp
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ class Capture1394App : public AppBasic
 		void draw();
 
 	private:
-		params::InterfaceGl mParams;
+		params::InterfaceGlRef mParams;
 
 		float mFps;
 		bool mVerticalSyncEnabled = false;
@@ -57,9 +57,9 @@ void Capture1394App::prepareSettings( Settings *settings )
 
 void Capture1394App::setup()
 {
-	mParams = params::InterfaceGl( "Parameters", Vec2i( 200, 300 ) );
-	mParams.addParam( "Fps", &mFps, "", true );
-	mParams.addParam( "Vertical sync", &mVerticalSyncEnabled );
+	mParams = params::InterfaceGl::create( "Parameters", Vec2i( 200, 300 ) );
+	mParams->addParam( "Fps", &mFps, "", true );
+	mParams->addParam( "Vertical sync", &mVerticalSyncEnabled );
 
 	setFrameRate( 1000 );
 	try
@@ -120,7 +120,7 @@ void Capture1394App::draw()
 		gl::draw( mTexture, getWindowBounds() );
 	}
 
-	params::InterfaceGl::draw();
+	mParams->draw();
 }
 
 void Capture1394App::shutdown()
@@ -137,7 +137,7 @@ void Capture1394App::keyDown( KeyEvent event )
 			if ( !isFullScreen() )
 			{
 				setFullScreen( true );
-				if ( mParams.isVisible() )
+				if ( mParams->isVisible() )
 					showCursor();
 				else
 					hideCursor();
@@ -150,10 +150,10 @@ void Capture1394App::keyDown( KeyEvent event )
 			break;
 
 		case KeyEvent::KEY_s:
-			mParams.show( !mParams.isVisible() );
+			mParams->show( ! mParams->isVisible() );
 			if ( isFullScreen() )
 			{
-				if ( mParams.isVisible() )
+				if ( mParams->isVisible() )
 					showCursor();
 				else
 					hideCursor();

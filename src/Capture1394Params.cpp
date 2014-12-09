@@ -58,7 +58,7 @@ Capture1394Params::Obj::Obj( const ci::app::WindowRef &window ) :
         mCaptures.push_back( Capture1394Ref() );
 		mDeviceNames.push_back( "Camera not available" );
 	}
-	mParams = ci::params::InterfaceGl( window, "Capture1394", ci::Vec2i( 350, 550 ) );
+	mParams = ci::params::InterfaceGl::create( window, "Capture1394", ci::Vec2i( 350, 550 ) );
 	setupParams();
 }
 
@@ -68,8 +68,8 @@ Capture1394Params::Obj::~Obj()
 
 void Capture1394Params::Obj::setupParams()
 {
-	mParams.clear();
-	mParams.addParam( "Capture", mDeviceNames, &mCurrentCapture );
+	mParams->clear();
+	mParams->addParam( "Capture", mDeviceNames, &mCurrentCapture );
 
 	if ( !mCaptures[ mCurrentCapture ] )
 		return;
@@ -84,7 +84,7 @@ void Capture1394Params::Obj::setupParams()
 		videoModeNames.push_back( videoMode.str() );
 	}
 	mVideoMode = 0;
-	mParams.addParam( "Video modes", videoModeNames, &mVideoMode );
+	mParams->addParam( "Video modes", videoModeNames, &mVideoMode );
 
 	// features
 	dc1394camera_t *camera = mCaptures[ mCurrentCapture ]->getDevice()->getNative();
@@ -103,11 +103,11 @@ void Capture1394Params::Obj::setupParams()
 		mFeatures[ i ].mId = feature.id;
 		string name = dc1394_feature_get_string( feature.id );
 		mFeatures[ i ].mName = name;
-		mParams.addText( name );
+		mParams->addText( name );
 		if ( feature.on_off_capable )
 		{
 			mFeatures[ i ].mIsOn = feature.is_on;
-			mParams.addParam( name + " ON/OFF", &mFeatures[ i ].mIsOn );
+			mParams->addParam( name + " ON/OFF", &mFeatures[ i ].mIsOn );
 		}
 
 		// modes
@@ -120,7 +120,7 @@ void Capture1394Params::Obj::setupParams()
 			if ( mode == feature.current_mode )
 				mFeatures[ i ].mMode = j;
 		}
-		mParams.addParam( name + " mode", modeNames, &mFeatures[ i ].mMode );
+		mParams->addParam( name + " mode", modeNames, &mFeatures[ i ].mMode );
 
 		// values
 		mFeatures[ i ].mValue = feature.value;
@@ -128,13 +128,13 @@ void Capture1394Params::Obj::setupParams()
 		if ( feature.id == DC1394_FEATURE_WHITE_BALANCE )
 		{
 			mFeatures[ i ].mBUValue = feature.BU_value;
-			mParams.addParam( name + " B/U", &mFeatures[ i ].mBUValue, readonly ).min( feature.min ).max( feature.max );
+			mParams->addParam( name + " B/U", &mFeatures[ i ].mBUValue, readonly ).min( feature.min ).max( feature.max );
 			mFeatures[ i ].mRVValue = feature.RV_value;
-			mParams.addParam( name + " R/V", &mFeatures[ i ].mRVValue, readonly ).min( feature.min ).max( feature.max );
+			mParams->addParam( name + " R/V", &mFeatures[ i ].mRVValue, readonly ).min( feature.min ).max( feature.max );
 		}
 		else
 		{
-			mParams.addParam( name + " value", &mFeatures[ i ].mValue ).min( feature.min ).max( feature.max );
+			mParams->addParam( name + " value", &mFeatures[ i ].mValue ).min( feature.min ).max( feature.max );
 		}
 		mPrevFeatures[ i ] = mFeatures[ i ];
 	}
@@ -195,12 +195,12 @@ void Capture1394Params::Obj::update()
 			string readonly = ( mode == DC1394_FEATURE_MODE_AUTO ) ? "readonly=true" : "readonly=false";
 			if ( mFeatures[ i ].mId == DC1394_FEATURE_WHITE_BALANCE )
 			{
-				mParams.setOptions( mFeatures[ i ].mName + " B/U", readonly );
-				mParams.setOptions( mFeatures[ i ].mName + " R/V", readonly );
+				mParams->setOptions( mFeatures[ i ].mName + " B/U", readonly );
+				mParams->setOptions( mFeatures[ i ].mName + " R/V", readonly );
 			}
 			else
 			{
-				mParams.setOptions( mFeatures[ i ].mName + " value", readonly );
+				mParams->setOptions( mFeatures[ i ].mName + " value", readonly );
 			}
 			mPrevFeatures[ i ].mMode = mFeatures[ i ].mMode;
 		}

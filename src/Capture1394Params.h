@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2013 Gabor Papp
+ Copyright (C) 2013-2014 Gabor Papp
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU Lesser General Public License as published
@@ -44,6 +44,8 @@ class Capture1394Params
 
 		const Capture1394Ref getCurrentCaptureRef() const { return mObj->mCaptures[ mObj->mCurrentCapture ]; }
 
+		ci::params::InterfaceGlRef getParams() const { return mObj->mParams; }
+
 	protected:
 		Capture1394Params();
 		Capture1394Params( const cinder::app::WindowRef &window );
@@ -82,7 +84,7 @@ class Capture1394Params
 			int mVideoMode;
 
 			void setupParams();
-			ci::params::InterfaceGl mParams;
+			ci::params::InterfaceGlRef mParams;
 
 			dc1394featureset_t mFeatureSet;
 			Capture1394Params::Feature mFeatures[ DC1394_FEATURE_NUM ];

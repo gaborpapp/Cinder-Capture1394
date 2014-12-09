@@ -98,7 +98,7 @@ void Capture1394ParamsApp::draw()
 		gl::draw( mTexture, getWindowBounds() );
 	}
 
-	params::InterfaceGl::draw();
+	mCapture1394Params->getParams()->draw();
 }
 
 void Capture1394ParamsApp::keyDown( KeyEvent event )
