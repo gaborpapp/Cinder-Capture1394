@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2013 Gabor Papp
+ Copyright (C) 2013-2014 Gabor Papp
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ class Capture1394ParamsApp : public AppBasic
 	public:
 		void prepareSettings( Settings *settings );
 		void setup();
+		void shutdown();
 
 		void keyDown( KeyEvent event );
 
@@ -62,6 +63,16 @@ void Capture1394ParamsApp::setup()
 	{
 		console() << exc.what() << endl;
 		quit();
+	}
+
+	fs::path configPath = app::getAppPath();
+#ifdef CINDER_MAC
+	configPath = configPath.parent_path();
+#endif
+	configPath /= "capture1394.xml";
+	if ( fs::exists( configPath ) )
+	{
+		mCapture1394Params->read( loadFile( configPath ) );
 	}
 }
 
@@ -99,6 +110,16 @@ void Capture1394ParamsApp::draw()
 	}
 
 	mCapture1394Params->getParams()->draw();
+}
+
+void Capture1394ParamsApp::shutdown()
+{
+	fs::path configPath = app::getAppPath();
+#ifdef CINDER_MAC
+	configPath = configPath.parent_path();
+#endif
+	configPath /= "capture1394.xml";
+	mCapture1394Params->write( writeFile( configPath ) );
 }
 
 void Capture1394ParamsApp::keyDown( KeyEvent event )

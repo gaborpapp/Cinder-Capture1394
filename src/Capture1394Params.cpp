@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2013 Gabor Papp
+ Copyright (C) 2013-2014 Gabor Papp
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU Lesser General Public License as published
@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include "cinder/app/App.h"
+#include "cinder/Xml.h"
 
 #include "Capture1394Params.h"
 
@@ -33,8 +34,71 @@ Capture1394Params::Capture1394Params( const ci::app::WindowRef &window ) :
 	mObj( shared_ptr< Obj >( new Capture1394Params::Obj( window ) ) )
 {}
 
+void Capture1394Params::read( const ci::DataSourceRef &source )
+{
+	ci::XmlTree doc = ci::XmlTree( source );
+
+	ci::XmlTree cameraId = doc.getChild( "cameraId" );
+	mObj->mCurrentCapture = cameraId.getAttributeValue( "id", 0 );
+	ci::XmlTree videoMode = doc.getChild( "videoMode" );
+	mObj->mVideoMode = videoMode.getAttributeValue( "id", 0 );
+
+	ci::XmlTree features = doc.getChild( "features" );
+	for ( ci::XmlTree::ConstIter child = features.begin(); child != features.end(); ++child )
+	{
+		int id = child->getAttributeValue( "id", 0 );
+		if ( id == 0 )
+		{
+			continue;
+		}
+		int i = id - DC1394_FEATURE_MIN;
+		mObj->mFeatures[ i ].mId = (dc1394feature_t)id;
+		mObj->mFeatures[ i ].mName = child->getAttributeValue( "name", std::string() );
+		mObj->mFeatures[ i ].mIsOn = child->getAttributeValue( "isOn", false );
+		mObj->mFeatures[ i ].mMode = child->getAttributeValue( "mode", 0 );
+		mObj->mFeatures[ i ].mValue = child->getAttributeValue( "value", 0 );
+		mObj->mFeatures[ i ].mBUValue = child->getAttributeValue( "BUValue", 0 );
+		mObj->mFeatures[ i ].mRVValue = child->getAttributeValue( "RVValue", 0 );
+	}
+}
+
+void Capture1394Params::write( const ci::DataTargetRef &target )
+{
+	ci::XmlTree doc = ci::XmlTree::createDoc();
+
+	ci::XmlTree cameraId = ci::XmlTree( "cameraId", "" );
+	cameraId.setAttribute( "id", mObj->mCurrentCapture );
+	doc.push_back( cameraId );
+
+	ci::XmlTree videoMode = ci::XmlTree( "videoMode", "" );
+	videoMode.setAttribute( "id", mObj->mVideoMode );
+	doc.push_back( videoMode );
+
+	ci::XmlTree features = ci::XmlTree( "features", "" );
+	for ( int i = 0; i < DC1394_FEATURE_NUM; i++ )
+	{
+		if ( mObj->mFeatures[ i ].mId == 0 )
+		{
+			continue;
+		}
+
+		ci::XmlTree feature = ci::XmlTree( "feature", "" );
+		feature.setAttribute( "id", mObj->mFeatures[ i ].mId );
+		feature.setAttribute( "name", mObj->mFeatures[ i ].mName );
+		feature.setAttribute( "isOn", mObj->mFeatures[ i ].mIsOn );
+		feature.setAttribute( "mode", mObj->mFeatures[ i ].mMode );
+		feature.setAttribute( "value", mObj->mFeatures[ i ].mValue );
+		feature.setAttribute( "BUValue", mObj->mFeatures[ i ].mBUValue );
+		feature.setAttribute( "RVValue", mObj->mFeatures[ i ].mRVValue );
+
+		features.push_back( feature );
+	}
+	doc.push_back( features );
+	doc.write( target );
+}
+
 Capture1394Params::Obj::Obj( const ci::app::WindowRef &window ) :
-	mCurrentCapture( 0 )
+	mCurrentCapture( 0 ), mVideoMode( 0 )
 {
 	const vector< Capture1394::DeviceRef > &devices = Capture1394::getDevices();
 	for ( auto it = devices.cbegin(); it != devices.end(); ++it )
@@ -83,8 +147,11 @@ void Capture1394Params::Obj::setupParams()
 		videoMode << *it;
 		videoModeNames.push_back( videoMode.str() );
 	}
-	mVideoMode = 0;
 	mParams->addParam( "Video modes", videoModeNames, &mVideoMode );
+	if ( mVideoMode >= videoModeNames.size() )
+	{
+		mVideoMode = 0;
+	}
 
 	// features
 	dc1394camera_t *camera = mCaptures[ mCurrentCapture ]->getDevice()->getNative();

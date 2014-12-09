@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "cinder/DataSource.h"
 #include "cinder/params/Params.h"
 
 #include "Capture1394.h"
@@ -46,12 +47,19 @@ class Capture1394Params
 
 		ci::params::InterfaceGlRef getParams() const { return mObj->mParams; }
 
+		void read( const ci::DataSourceRef &source );
+		void write( const ci::DataTargetRef &target );
+
 	protected:
 		Capture1394Params();
 		Capture1394Params( const cinder::app::WindowRef &window );
 
 		struct Feature
 		{
+			Feature() : mId( (dc1394feature_t)0 ), mIsOn( false ), mMode( 0 ), mValue( 0 ),
+						mBUValue( 0 ), mRVValue( 0 )
+			{}
+
 			std::string mName;
 			dc1394feature_t mId;
 			bool mIsOn;
