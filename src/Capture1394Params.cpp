@@ -122,7 +122,7 @@ Capture1394Params::Obj::Obj( const ci::app::WindowRef &window ) :
         mCaptures.push_back( Capture1394Ref() );
 		mDeviceNames.push_back( "Camera not available" );
 	}
-	mParams = ci::params::InterfaceGl::create( window, "Capture1394", ci::Vec2i( 350, 550 ) );
+	mParams = ci::params::InterfaceGl::create( window, "Capture1394", ci::ivec2( 350, 550 ) );
 	setupParams();
 }
 

@@ -45,15 +45,15 @@ class Capture1394
 				//! Default constructor for choosing the video mode automatically.
 				VideoMode() : mAutoVideoMode( true ) {}
 
-				VideoMode( const ci::Vec2i &res, dc1394video_mode_t videoMode,
+				VideoMode( const ci::ivec2 &res, dc1394video_mode_t videoMode,
 						   dc1394color_coding_t coding, dc1394framerate_t frameRate = (dc1394framerate_t)0 ) :
 					mResolution( res ), mVideoMode( videoMode ), mColorCoding( coding ),
 					mFrameRate( frameRate ), mAutoVideoMode( false ) {}
 
 				//! TODO: the resolution is set by the videomode, this has no effect yet
-				VideoMode & resolution( const ci::Vec2i &resolution ) { mResolution = resolution; return *this; }
-				void setResolution( const ci::Vec2i &resolution ) { mResolution = resolution; }
-				const ci::Vec2i & getResolution() const { return mResolution; }
+				VideoMode & resolution( const ci::ivec2 &resolution ) { mResolution = resolution; return *this; }
+				void setResolution( const ci::ivec2 &resolution ) { mResolution = resolution; }
+				const ci::ivec2 & getResolution() const { return mResolution; }
 
 				/** \a videoMode is one of DC1394_VIDEO_MODE_160x120_YUV444, DC1394_VIDEO_MODE_320x240_YUV422,
 				  DC1394_VIDEO_MODE_640x480_YUV411, DC1394_VIDEO_MODE_640x480_YUV422, DC1394_VIDEO_MODE_640x480_RGB8,
@@ -89,7 +89,7 @@ class Capture1394
 				bool getAutoVideoMode() const { return mAutoVideoMode; }
 
 			protected:
-				ci::Vec2i mResolution;
+				ci::ivec2 mResolution;
 				dc1394video_mode_t mVideoMode;
 				dc1394color_coding_t mColorCoding;
 				dc1394framerate_t mFrameRate;
@@ -179,7 +179,7 @@ class Capture1394
 		//! Returns the height of the captured image in pixels.
 		int32_t getHeight() const { return mObj->getHeight(); }
 		//! Returns the size of the captured image in pixels.
-		ci::Vec2i getSize() const { return ci::Vec2i( getWidth(), getHeight() ); }
+		ci::ivec2 getSize() const { return ci::ivec2( getWidth(), getHeight() ); }
 		//! Returns the aspect ratio of the capture imagee, which is its width / height
 		float getAspectRatio() const { return getWidth() / (float)getHeight(); }
 		//! Returns the bounding rectangle of the capture imagee, which is Area( 0, 0, width, height )
@@ -189,7 +189,7 @@ class Capture1394
 		bool checkNewFrame() const { return mObj->checkNewFrame(); }
 
 		//! Returns a Surface representing the current captured frame.
-		ci::Surface8u getSurface() const { return mObj->getSurface(); }
+		ci::Surface8uRef getSurface() const { return mObj->getSurface(); }
 
 		//! Returns the associated Device for this instance of Capture1394
 		const DeviceRef getDevice() const { return mObj->mDevice; }
@@ -251,7 +251,7 @@ class Capture1394
 			int32_t getHeight() const { return mHeight; };
 
 			bool checkNewFrame() const;
-			ci::Surface8u getSurface() const;
+			ci::Surface8uRef getSurface() const;
 
 			Options mOptions;
 			DeviceRef mDevice;
@@ -266,7 +266,7 @@ class Capture1394
 			void setVideoMode( const VideoMode &videoMode );
 
 			std::shared_ptr< class SurfaceCache > mSurfaceCache;
-			ci::Surface8u mCurrentSurface;
+			ci::Surface8uRef mCurrentSurface;
 			mutable bool mHasNewFrame;
 			bool mIsCapturing;
 		};

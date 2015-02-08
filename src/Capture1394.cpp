@@ -105,14 +105,14 @@ const vector< Capture1394::DeviceRef > & Capture1394::getDevices( bool forceRefr
 				for ( int j = framerates.num - 1; j >= 0; j-- )
 				{
 					device->mSupportedVideoModes.push_back(
-						Capture1394::VideoMode( ci::Vec2i( width, height ), videoMode, coding,
+						Capture1394::VideoMode( ci::ivec2( width, height ), videoMode, coding,
 							framerates.framerates[ j ] ) );
 				}
 			}
 			else
 			{
 				// Modes corresponding for format6 and format7 do not have framerates
-				device->mSupportedVideoModes.push_back( Capture1394::VideoMode( ci::Vec2i( width, height ), videoMode, coding ) );
+				device->mSupportedVideoModes.push_back( Capture1394::VideoMode( ci::ivec2( width, height ), videoMode, coding ) );
 			}
 		}
 
@@ -127,7 +127,7 @@ const vector< Capture1394::DeviceRef > & Capture1394::getDevices( bool forceRefr
 
 			device->mSupportedVideoModes.push_back(
 				Capture1394::VideoMode(
-					ci::Vec2i( mode.max_size_x, mode.max_size_y ), dc1394video_mode_t( DC1394_VIDEO_MODE_FORMAT7_0 + v ), mode.color_coding ) );
+					ci::ivec2( mode.max_size_x, mode.max_size_y ), dc1394video_mode_t( DC1394_VIDEO_MODE_FORMAT7_0 + v ), mode.color_coding ) );
 		}
 
 		sDevices.push_back( device );
@@ -202,10 +202,10 @@ Capture1394::Obj::Obj( const Options &options, const Capture1394::DeviceRef devi
 
 	// allocate surface cache for the maximum resolution
 	auto videoModes = mDevice->getSupportedVideoModes();
-	ci::Vec2i maxRes( 0, 0 );
+	ci::ivec2 maxRes( 0, 0 );
 	for ( auto it = videoModes.cbegin(); it != videoModes.cend(); ++it )
 	{
-		ci::Vec2i res = it->getResolution();
+		ci::ivec2 res = it->getResolution();
 		if ( maxRes.x * maxRes.y < res.x * res.y )
 			maxRes = res;
 	}
@@ -314,13 +314,13 @@ void Capture1394::Obj::threadedFunc()
 			if ( !dc1394_capture_is_frame_corrupt( camera, frame ) )
 			{
 				lock_guard< mutex > lock( mMutex );
-				ci::Surface8u surface = mSurfaceCache->getNewSurface();
+				ci::Surface8uRef surface = mSurfaceCache->getNewSurface();
 				dc1394video_mode_t videoMode = mOptions.getVideoMode().getVideoMode();
 				if ( ( DC1394_VIDEO_MODE_FORMAT7_MIN <= videoMode ) &&
 						( videoMode <= DC1394_VIDEO_MODE_FORMAT7_MAX ) )
 				{
 					Capture1394::checkError( dc1394_bayer_decoding_8bit(
-								frame->image, surface.getData(), mWidth, mHeight,
+								frame->image, surface->getData(), mWidth, mHeight,
 								DC1394_COLOR_FILTER_RGGB, DC1394_BAYER_METHOD_BILINEAR ) );
 				}
 				else
@@ -340,7 +340,7 @@ void Capture1394::Obj::threadedFunc()
 							break;
 					}
 					Capture1394::checkError( dc1394_convert_to_RGB8(
-								frame->image, surface.getData(), mWidth, mHeight,
+								frame->image, surface->getData(), mWidth, mHeight,
 								frame->yuv_byte_order, colorCoding, bits ) );
 				}
 				mCurrentSurface = surface;
@@ -357,7 +357,7 @@ bool Capture1394::Obj::checkNewFrame() const
 	return mHasNewFrame;
 }
 
-ci::Surface8u Capture1394::Obj::getSurface() const
+ci::Surface8uRef Capture1394::Obj::getSurface() const
 {
 	lock_guard< mutex > lock( mMutex );
 	mHasNewFrame = false;

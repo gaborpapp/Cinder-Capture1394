@@ -27,8 +27,7 @@ SurfaceCache::SurfaceCache( int32_t width, int32_t height, ci::SurfaceChannelOrd
 {
 	for ( int i = 0; i < numSurfaces; ++i )
 	{
-		mSurfaceData.push_back( std::shared_ptr<uint8_t>( new uint8_t[ width * height * sco.getPixelInc()], checked_array_deleter<uint8_t>() ) );
-		mDeallocatorRefcon.push_back( std::make_pair( this, i ) );
+		mSurfaceData.push_back( std::shared_ptr<uint8_t>( new uint8_t[ width * height * sco.getPixelInc()], std::default_delete<uint8_t[]>() ) );
 		mSurfaceUsed.push_back( false );
 	}
 }
@@ -39,27 +38,20 @@ void SurfaceCache::resize( int32_t width, int32_t height )
 	mHeight = height;
 }
 
-ci::Surface8u SurfaceCache::getNewSurface()
+ci::Surface8uRef SurfaceCache::getNewSurface()
 {
 	// try to find an available block of pixel data to wrap a surface around
 	for ( size_t i = 0; i < mSurfaceData.size(); ++i )
 	{
-		if ( !mSurfaceUsed[i] )
+		if ( ! mSurfaceUsed[i] )
 		{
 			mSurfaceUsed[i] = true;
-			ci::Surface8u result( mSurfaceData[i].get(), mWidth, mHeight, mWidth * mSCO.getPixelInc(), mSCO );
-			result.setDeallocator( surfaceDeallocator, &mDeallocatorRefcon[i] );
+			auto newSurface = new ci::Surface( mSurfaceData[i].get(), mWidth, mHeight, mWidth * mSCO.getPixelInc(), mSCO );
+			ci::Surface8uRef result = std::shared_ptr<ci::Surface8u>( newSurface, [=] ( ci::Surface8u* s ) { mSurfaceUsed[i] = false; } );
 			return result;
 		}
 	}
 
 	// we couldn't find an available surface, so we'll need to allocate one
-	return ci::Surface8u( mWidth, mHeight, mSCO.hasAlpha(), mSCO );
+	return ci::Surface8u::create( mWidth, mHeight, mSCO.hasAlpha(), mSCO );
 }
-
-void SurfaceCache::surfaceDeallocator( void *refcon )
-{
-	std::pair< SurfaceCache *, int > *info = reinterpret_cast< std::pair< SurfaceCache *, int > *>( refcon );
-	info->first->mSurfaceUsed[ info->second ] = false;
-}
-

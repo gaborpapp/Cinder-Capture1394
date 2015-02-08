@@ -17,6 +17,7 @@
 
 #include "cinder/Cinder.h"
 #include "cinder/app/AppBasic.h"
+#include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
 #include "cinder/params/Params.h"
@@ -44,7 +45,7 @@ class Capture1394ParamsApp : public AppBasic
 		bool mVerticalSyncEnabled = false;
 
 		Capture1394ParamsRef mCapture1394Params;
-		gl::Texture mTexture;
+		gl::TextureRef mTexture;
 };
 
 void Capture1394ParamsApp::prepareSettings( Settings *settings )
@@ -93,7 +94,7 @@ void Capture1394ParamsApp::update()
 	const Capture1394Ref captureRef = mCapture1394Params->getCurrentCaptureRef();
 	if ( captureRef && captureRef->checkNewFrame() )
 	{
-		mTexture = gl::Texture( captureRef->getSurface() );
+		mTexture = gl::Texture::create( *captureRef->getSurface() );
 	}
 }
 
@@ -101,7 +102,7 @@ void Capture1394ParamsApp::draw()
 {
 	gl::clear();
 
-	gl::setViewport( getWindowBounds() );
+	gl::viewport( getWindowSize() );
 	gl::setMatricesWindow( getWindowSize() );
 
 	if ( mTexture )
