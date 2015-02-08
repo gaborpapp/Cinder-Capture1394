@@ -4,3 +4,8 @@ scons/config.log
 .sconsign.dblite
 .sconf_temp
 *.o
+
+*.app
+Capture1394App
+Capture1394ParamsApp
+capture1394.xml
